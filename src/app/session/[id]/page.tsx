@@ -89,12 +89,15 @@ export default async function SessionPage({
     .eq("session_id", id)
     .order("question_order");
 
-  if (questionsError || !sessionQuestions || sessionQuestions.length === 0) {
+  if (questionsError) {
+    throw new Error(`Chyba při načítání otázek: ${questionsError.message}`);
+  }
+
+  if (!sessionQuestions || sessionQuestions.length === 0) {
     return (
       <div className="p-8 text-center">
-        <h1 className="text-xl font-bold">Questions missing</h1>
-        <p className="text-muted-foreground mt-2">Could not fetch questions for this session.</p>
-        {questionsError && <p className="text-xs mt-2 text-destructive">{questionsError.message}</p>}
+        <h1 className="text-xl font-bold">Otázky chybí</h1>
+        <p className="text-muted-foreground mt-2">Nepodařilo se načíst žádné otázky pro tuto relaci.</p>
       </div>
     );
   }
