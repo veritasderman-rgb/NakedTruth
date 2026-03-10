@@ -106,6 +106,40 @@ export async function startSession(email?: string) {
   redirect(`/session/${sessionId}?token=${session.partner_a_access_token}`);
 }
 
+export async function joinSession(sessionId: string) {
+  const supabase = getSupabaseAdmin();
+
+  // Create anonymous User B
+  const { data: newUserB, error: createError } = await supabase
+    .from('users')
+    .insert({ is_anonymous: true })
+    .select('id')
+    .single();
+
+  if (createError) throw createError;
+
+  // Get session info
+  const { data: session, error: sessionError } = await supabase
+    .from('sessions')
+    .select('couple_id')
+    .eq('id', sessionId)
+    .single();
+
+  if (sessionError || !session) throw new Error('Relace nebyla nalezena');
+
+  // Update session with User B
+  await supabase.from('sessions').update({ partner_b_user_id: newUserB.id }).eq('id', sessionId);
+
+  // Add User B to couple
+  await supabase.from('couple_members').insert({
+    couple_id: session.couple_id,
+    user_id: newUserB.id,
+    role: 'partner_b'
+  });
+
+  return { success: true, userId: newUserB.id };
+}
+
 export async function submitAnswers(sessionId: string, userId: string, answers: { questionId: number, kind: string, value: any }[], role: string) {
   const supabase = getSupabaseAdmin();
 

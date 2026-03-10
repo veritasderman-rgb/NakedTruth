@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function sendInviteEmail(email: string, inviteLink: string) {
   if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'your-resend-api-key') {
@@ -9,6 +9,7 @@ export async function sendInviteEmail(email: string, inviteLink: string) {
   }
 
   try {
+    if (!resend) throw new Error('Resend client not initialized');
     await resend.emails.send({
       from: 'NakedTruth <onboarding@resend.dev>',
       to: email,
