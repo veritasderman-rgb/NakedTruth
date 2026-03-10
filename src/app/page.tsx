@@ -1,4 +1,5 @@
 import HomeForm from "./HomeForm";
+export const dynamic = 'force-dynamic';
 
 export default function Home() {
   const config = {
