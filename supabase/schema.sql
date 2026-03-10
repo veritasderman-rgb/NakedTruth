@@ -4,10 +4,29 @@
 create extension if not exists pgcrypto;
 
 -- ========= ENUMS =========
-create type question_tier as enum ('tier_1', 'tier_2');
-create type question_kind as enum ('yes_no', 'frequency_1_5', 'short_answer');
-create type session_status as enum ('pending_partner', 'completed');
-create type participant_role as enum ('partner_a', 'partner_b');
+do $$ begin
+  create type question_tier as enum ('tier_1', 'tier_2');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type question_kind as enum ('yes_no', 'frequency_1_5', 'short_answer');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type session_status as enum ('pending_partner', 'completed');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type participant_role as enum ('partner_a', 'partner_b');
+exception
+  when duplicate_object then null;
+end $$;
 
 -- ========= USERS =========
 create table if not exists public.users (
@@ -263,15 +282,3 @@ begin
     and partner_b_completed_at is not null;
 end;
 $$;
-
--- ========= SEED SAMPLE QUESTIONS =========
--- Replace with full ~300 seed set. Keeping this script concise for dashboard use.
-insert into public.questions (tier, kind, prompt)
-values
-  ('tier_1', 'yes_no', 'Do you want to have children someday?'),
-  ('tier_1', 'frequency_1_5', 'How often do you want dedicated date nights?'),
-  ('tier_1', 'short_answer', 'What does an ideal weekday evening look like for you?'),
-  ('tier_2', 'yes_no', 'Are you open to discussing fantasies openly?'),
-  ('tier_2', 'frequency_1_5', 'How important is sexual novelty for you?'),
-  ('tier_2', 'short_answer', 'What is one intimacy boundary that matters most to you?')
-on conflict do nothing;
