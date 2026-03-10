@@ -23,11 +23,16 @@ export default function Home() {
         NakedTruth · Beta
       </span>
       <h1 className="text-balance text-4xl font-semibold tracking-tight">
-        Get closer with blind-answer sessions.
+        Poznejte se upřímně a bez zábran.
       </h1>
-      <p className="mt-4 text-pretty text-sm text-muted-foreground">
-        Each partner answers the same questions privately. Compare answers only when both are done.
-      </p>
+      <div className="mt-4 space-y-4 text-pretty text-sm text-muted-foreground">
+        <p>
+          Každý z partnerů odpovídá na stejné otázky soukromě. Odpovědi uvidíte společně až ve chvíli, kdy budete mít oba hotovo.
+        </p>
+        <p className="text-xs italic bg-accent/30 p-3 rounded-lg border">
+          Prvních 20 otázek je spíše vztahových, ale jestli se chcete poznat opravdu důkladně, pokračujte pak dál... skutečný kink začíná až v druhém kole 😉
+        </p>
+      </div>
 
       <HomeForm isConfigured={!!isConfigured} missingVars={missingVars} />
     </main>

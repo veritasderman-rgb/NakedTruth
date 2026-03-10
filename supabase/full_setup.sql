@@ -34,7 +34,8 @@ END $$;
 -- 2. Create Tables
 CREATE TABLE IF NOT EXISTS public.users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email text NOT NULL UNIQUE,
+  email text UNIQUE,
+  is_anonymous boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT users_email_lowercase CHECK (email = lower(email))
 );
