@@ -5,7 +5,7 @@ export default function Home() {
   const config = {
     supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    supabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your-supabase-service-role-key',
     appUrl: !!process.env.NEXT_PUBLIC_APP_URL,
   };
 
