@@ -7,10 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { invitePartner } from "../../actions/session";
 import { Check, Copy } from "lucide-react";
 
-export default function InvitePartner({ sessionId, session, role }: { sessionId: string, session: any, role: string }) {
+export default function InvitePartner({ sessionId, session, role, tokenB }: { sessionId: string, session: any, role: string, tokenB: string }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [inviteLink, setInviteLink] = useState("");
+
+  // Construct the initial link using the tokenB passed from parent
+  const initialLink = typeof window !== 'undefined'
+    ? `${window.location.origin}/session/${sessionId}?token=${tokenB}`
+    : '';
+
+  const [inviteLink, setInviteLink] = useState(initialLink);
   const [copied, setCopied] = useState(false);
 
   const handleInvite = async (e: React.FormEvent) => {

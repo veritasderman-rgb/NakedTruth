@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { notFound } from "next/navigation";
+import { joinSession } from "../../actions/session";
 export const dynamic = 'force-dynamic';
 
 import QuestionnaireForm from "./QuestionnaireForm";
@@ -30,7 +31,7 @@ export default async function SessionPage({
       console.error("Session lookup error:", sessionError);
       return (
         <div className="p-8 text-center">
-          <h1 className="text-xl font-bold">Session not found</h1>
+          <h1 className="text-xl font-bold">Relace nenalezena</h1>
           <p className="text-muted-foreground mt-2">Error: {sessionError?.message || "Unknown error"}</p>
           <p className="text-xs mt-4 text-muted-foreground">ID: {id}</p>
         </div>
@@ -45,7 +46,14 @@ export default async function SessionPage({
     }
 
     if (!role) {
-      return <div className="p-8 text-center">Invalid access token.</div>;
+      return <div className="p-8 text-center">Neplatný přístupový token.</div>;
+    }
+
+    // New: If Partner B is accessing for the first time and is anonymous
+    let userId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
+    if (role === "partner_b" && !userId) {
+       const res = await joinSession(id);
+       userId = res.userId;
     }
 
   // 2. Check if this partner already completed
@@ -71,7 +79,7 @@ export default async function SessionPage({
 
   // 4. If I'm done but partner isn't, show invite/waiting
   if (isCompletedByMe) {
-    return <InvitePartner sessionId={id} session={session} role={role} />;
+    return <InvitePartner sessionId={id} session={session} role={role} tokenB={session.partner_b_access_token} />;
   }
 
   // 5. Otherwise, show questionnaire
@@ -98,8 +106,6 @@ export default async function SessionPage({
   if (validQuestions.length === 0) {
     return <div className="p-8 text-center">Questions exist in session but could not be loaded from main table.</div>;
   }
-
-  const userId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
 
   return (
     <QuestionnaireForm
