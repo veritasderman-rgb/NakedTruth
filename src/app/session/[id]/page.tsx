@@ -55,7 +55,8 @@ export default async function SessionPage({
       .select("*")
       .eq("session_id", id);
 
-    return <ComparisonView session={session} questions={questions || []} answers={answers || []} />;
+    const myUserId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
+    return <ComparisonView session={session} questions={questions || []} answers={answers || []} myUserId={myUserId} />;
   }
 
   // 4. If I'm done but partner isn't, show invite/waiting
