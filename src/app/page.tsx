@@ -8,15 +8,18 @@ import { startSession } from "./actions/session";
 export default function Home() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
+    setError(null);
     try {
       await startSession(email);
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error("Failed to start session:", err);
+      setError(err.message || "Something went wrong. Please check your database connection.");
       setLoading(false);
     }
   };
@@ -41,6 +44,11 @@ export default function Home() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Starting..." : "Start your first session"}
         </Button>
