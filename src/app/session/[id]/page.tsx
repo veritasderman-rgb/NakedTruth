@@ -19,11 +19,12 @@ export default async function SessionPage({
   // 1. Validate session and token
   const { data: session, error: sessionError } = await supabase
     .from("sessions")
-    .select("*, couple_members!couple_id(*)")
+    .select("*")
     .eq("id", id)
     .single();
 
   if (sessionError || !session) {
+    console.error("Session lookup error:", sessionError);
     return notFound();
   }
 
@@ -55,7 +56,8 @@ export default async function SessionPage({
       .select("*")
       .eq("session_id", id);
 
-    return <ComparisonView session={session} questions={questions || []} answers={answers || []} />;
+    const myUserId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
+    return <ComparisonView session={session} questions={questions || []} answers={answers || []} myUserId={myUserId} />;
   }
 
   // 4. If I'm done but partner isn't, show invite/waiting
@@ -64,11 +66,15 @@ export default async function SessionPage({
   }
 
   // 5. Otherwise, show questionnaire
-  const { data: questions } = await supabase
+  const { data: sessionQuestions } = await supabase
     .from("session_questions")
     .select("question_id, questions(*)")
     .eq("session_id", id)
     .order("question_order");
+
+  if (!sessionQuestions || sessionQuestions.length === 0) {
+    return <div>No questions found for this session.</div>;
+  }
 
   const userId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
 
@@ -76,7 +82,7 @@ export default async function SessionPage({
     <QuestionnaireForm
       sessionId={id}
       userId={userId}
-      questions={(questions || []).map(q => q.questions)}
+      questions={sessionQuestions.map(q => q.questions)}
       role={role}
     />
   );

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { generateNextSession } from "../../actions/session";
 
-export default function ComparisonView({ session, questions, answers }: { session: any, questions: any[], answers: any[] }) {
+export default function ComparisonView({ session, questions, answers, myUserId }: { session: any, questions: any[], answers: any[], myUserId: string }) {
   const [generating, setGenerating] = useState(false);
   const partnerAId = session.partner_a_user_id;
   const partnerBId = session.partner_b_user_id;
@@ -14,9 +14,7 @@ export default function ComparisonView({ session, questions, answers }: { sessio
   const handleNextSession = async () => {
     setGenerating(true);
     try {
-      // For now, let the user who clicks be the "partner_a" of the next session
-      const currentUserId = partnerAId; // Simplified
-      await generateNextSession(session.couple_id, currentUserId);
+      await generateNextSession(session.couple_id, myUserId);
     } catch (error) {
       console.error(error);
       setGenerating(false);
