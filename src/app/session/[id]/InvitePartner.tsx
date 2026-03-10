@@ -34,49 +34,57 @@ export default function InvitePartner({ sessionId, session, role }: { sessionId:
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12">
-      <Card className="w-full">
+      <Card className="w-full border-none shadow-xl">
         <CardHeader className="text-center">
-          <CardTitle>Great job!</CardTitle>
+          <CardTitle className="text-2xl">Skvělá práce!</CardTitle>
           <CardDescription>
-            You&apos;ve completed your part. Now invite your partner to answer the same questions.
+            Máte hotovo. Teď je řada na vašem partnerovi, aby odpověděl na stejné otázky.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {!inviteLink ? (
-            <form onSubmit={handleInvite} className="space-y-4">
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-center">Nasdílejte partnerovi tento unikátní odkaz:</p>
+            <div className="flex items-center space-x-2">
+              <Input value={inviteLink} readOnly className="flex-grow bg-muted" />
+              <Button size="icon" variant="outline" onClick={copyLink}>
+                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-[10px] text-center text-muted-foreground">
+              Partner uvidí otázky, ale vaše odpovědi zůstanou skryté, dokud nedokončí i on svou část.
+            </p>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase">
+              <span className="bg-background px-2 text-muted-foreground font-semibold">Nebo poslat e-mailem</span>
+            </div>
+          </div>
+
+          {!inviteLink.includes('undefined') && (
+            <form onSubmit={handleInvite} className="space-y-3">
               <Input
                 type="email"
-                placeholder="Partner&apos;s email"
+                placeholder="Partnerův e-mail"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
               />
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Sending invite..." : "Invite Partner"}
+              <Button type="submit" variant="secondary" className="w-full" disabled={loading || !email}>
+                {loading ? "Odesílám..." : "Poslat pozvánku"}
               </Button>
             </form>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-center text-muted-foreground">Invite link generated:</p>
-              <div className="flex items-center space-x-2">
-                <Input value={inviteLink} readOnly className="flex-grow" />
-                <Button size="icon" variant="outline" onClick={copyLink}>
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-              <p className="text-xs text-center text-muted-foreground">
-                You can also share this link manually.
-              </p>
-            </div>
           )}
         </CardContent>
       </Card>
 
-      {role === 'partner_a' && !session.partner_b_user_id && (
-        <p className="mt-8 text-sm text-muted-foreground text-center">
-          Waiting for your partner to join and complete the session...
-        </p>
-      )}
+      <p className="mt-12 text-sm text-muted-foreground text-center animate-pulse">
+        {role === 'partner_a' && !session.partner_b_user_id
+          ? "Čekáme, až se partner připojí..."
+          : "Čekáme na dokončení partnerem..."}
+      </p>
     </main>
   );
 }

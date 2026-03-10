@@ -14,27 +14,41 @@ async function getBaseUrl() {
   return `${protocol}://${host}`;
 }
 
-export async function startSession(email: string) {
+export async function startSession(email?: string) {
   const supabase = getSupabaseAdmin();
-  const normalizedEmail = email.toLowerCase().trim();
+  const normalizedEmail = email?.toLowerCase().trim();
 
-  // 1. Get or create user
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', normalizedEmail)
-    .single();
+  let activeUser;
 
-  if (userError && userError.code !== 'PGRST116') {
-    throw new Error('Database error');
-  }
+  if (normalizedEmail) {
+    // 1. Get or create user by email
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .single();
 
-  let activeUser = user;
+    if (userError && userError.code !== 'PGRST116') {
+      throw new Error('Chyba databáze');
+    }
 
-  if (!activeUser) {
+    activeUser = user;
+
+    if (!activeUser) {
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({ email: normalizedEmail })
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+      activeUser = newUser;
+    }
+  } else {
+    // Create anonymous user
     const { data: newUser, error: createError } = await supabase
       .from('users')
-      .insert({ email: normalizedEmail })
+      .insert({ is_anonymous: true })
       .select('id')
       .single();
 
@@ -120,23 +134,35 @@ export async function submitAnswers(sessionId: string, userId: string, answers: 
   return { success: true };
 }
 
-export async function invitePartner(sessionId: string, partnerBEmail: string) {
+export async function invitePartner(sessionId: string, partnerBEmail?: string) {
   const supabase = getSupabaseAdmin();
-  const normalizedEmail = partnerBEmail.toLowerCase().trim();
+  const normalizedEmail = partnerBEmail?.toLowerCase().trim();
 
-  // 1. Get or create User B
-  const { data: userB } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', normalizedEmail)
-    .single();
+  let activeUserB;
 
-  let activeUserB = userB;
+  if (normalizedEmail) {
+    // 1. Get or create User B
+    const { data: userB } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .single();
 
-  if (!activeUserB) {
+    activeUserB = userB;
+
+    if (!activeUserB) {
+      const { data: newUserB } = await supabase
+        .from('users')
+        .insert({ email: normalizedEmail })
+        .select('id')
+        .single();
+      activeUserB = newUserB;
+    }
+  } else {
+    // Create anonymous User B
     const { data: newUserB } = await supabase
       .from('users')
-      .insert({ email: normalizedEmail })
+      .insert({ is_anonymous: true })
       .select('id')
       .single();
     activeUserB = newUserB;
@@ -170,10 +196,13 @@ export async function invitePartner(sessionId: string, partnerBEmail: string) {
     });
   }
 
-  // 5. Send email
+  // 5. Send email if provided
   const baseUrl = await getBaseUrl();
   const inviteLink = `${baseUrl}/session/${sessionId}?token=${session.partner_b_access_token}`;
-  await sendInviteEmail(normalizedEmail, inviteLink);
+
+  if (normalizedEmail) {
+    await sendInviteEmail(normalizedEmail, inviteLink);
+  }
 
   return { success: true, inviteLink };
 }
