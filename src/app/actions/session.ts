@@ -3,6 +3,16 @@
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { sendInviteEmail } from '@/lib/mail';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+
+async function getBaseUrl() {
+  if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL !== 'undefined') {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  const host = (await headers()).get('host');
+  const protocol = host?.includes('localhost') ? 'http' : 'https';
+  return `${protocol}://${host}`;
+}
 
 export async function startSession(email: string) {
   const supabase = getSupabaseAdmin();
@@ -161,7 +171,8 @@ export async function invitePartner(sessionId: string, partnerBEmail: string) {
   }
 
   // 5. Send email
-  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/session/${sessionId}?token=${session.partner_b_access_token}`;
+  const baseUrl = await getBaseUrl();
+  const inviteLink = `${baseUrl}/session/${sessionId}?token=${session.partner_b_access_token}`;
   await sendInviteEmail(normalizedEmail, inviteLink);
 
   return { success: true, inviteLink };
