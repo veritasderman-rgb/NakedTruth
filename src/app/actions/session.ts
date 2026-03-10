@@ -139,10 +139,10 @@ export async function invitePartner(sessionId: string, partnerBEmail: string) {
     .eq('id', sessionId)
     .single();
 
+  if (!session) throw new Error('Session not found');
+
   // 3. Update session with User B
   await supabase.from('sessions').update({ partner_b_user_id: activeUserB!.id }).eq('id', sessionId);
-
-  if (!session) throw new Error('Session not found');
 
   // 4. Add User B to couple if not already
   const { data: existingMember } = await supabase
