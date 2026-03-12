@@ -80,26 +80,26 @@ export default function QuestionnaireForm({ sessionId, userId, questions, role }
           <CardContent className="space-y-6">
             {currentQuestion.kind === 'yes_no' && (
               <RadioGroup value={currentValue || ""} onValueChange={setCurrentValue} className="flex flex-col space-y-3">
-                <div className="flex items-center space-x-2 rounded-lg border p-4 hover:bg-accent cursor-pointer transition-colors">
+                <Label htmlFor="yes" className="flex items-center space-x-2 rounded-lg border p-4 hover:bg-accent cursor-pointer transition-colors">
                   <RadioGroupItem value="true" id="yes" />
-                  <Label htmlFor="yes" className="flex-grow cursor-pointer font-medium">Ano</Label>
-                </div>
-                <div className="flex items-center space-x-2 rounded-lg border p-4 hover:bg-accent cursor-pointer transition-colors">
+                  <span className="font-medium">Ano</span>
+                </Label>
+                <Label htmlFor="no" className="flex items-center space-x-2 rounded-lg border p-4 hover:bg-accent cursor-pointer transition-colors">
                   <RadioGroupItem value="false" id="no" />
-                  <Label htmlFor="no" className="flex-grow cursor-pointer font-medium">Ne</Label>
-                </div>
+                  <span className="font-medium">Ne</span>
+                </Label>
               </RadioGroup>
             )}
 
             {currentQuestion.kind === 'frequency_1_5' && (
               <RadioGroup value={currentValue || ""} onValueChange={setCurrentValue} className="flex flex-col space-y-3">
                 {[1, 2, 3, 4, 5].map((val) => (
-                  <div key={val} className="flex items-center space-x-2 rounded-lg border p-3 hover:bg-accent cursor-pointer transition-colors">
+                  <Label key={val} htmlFor={`f-${val}`} className="flex items-center space-x-2 rounded-lg border p-3 hover:bg-accent cursor-pointer transition-colors">
                     <RadioGroupItem value={val.toString()} id={`f-${val}`} />
-                    <Label htmlFor={`f-${val}`} className="flex-grow cursor-pointer font-medium">
+                    <span className="font-medium">
                       {val === 1 ? scaleLabels!.low : val === 5 ? scaleLabels!.high : val}
-                    </Label>
-                  </div>
+                    </span>
+                  </Label>
                 ))}
               </RadioGroup>
             )}
