@@ -23,6 +23,12 @@ exception
 end $$;
 
 do $$ begin
+  create type tier_preference as enum ('vanilla', 'spicy', 'mixed');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$ begin
   create type participant_role as enum ('partner_a', 'partner_b');
 exception
   when duplicate_object then null;
@@ -31,7 +37,8 @@ end $$;
 -- ========= USERS =========
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
-  email text not null unique,
+  email text unique,
+  is_anonymous boolean not null default false,
   created_at timestamptz not null default now(),
   constraint users_email_lowercase check (email = lower(email))
 );
@@ -77,6 +84,8 @@ create table if not exists public.sessions (
   partner_a_completed_at timestamptz,
   partner_b_completed_at timestamptz,
   completed_at timestamptz,
+  question_count int not null default 20,
+  tier_pref tier_preference not null default 'vanilla',
   partner_a_access_token uuid not null default gen_random_uuid(),
   partner_b_access_token uuid not null default gen_random_uuid(),
   created_at timestamptz not null default now(),
@@ -151,7 +160,8 @@ create or replace function public.create_next_session(
   p_created_by_user_id uuid,
   p_partner_a_user_id uuid,
   p_question_count int default 20,
-  p_tier2_mix_count int default 10
+  p_tier2_mix_count int default 10,
+  p_tier_pref tier_preference default 'vanilla'
 )
 returns uuid
 language plpgsql
@@ -161,7 +171,6 @@ as $$
 declare
   v_session_id uuid;
   v_session_number int;
-  v_total_previous int;
   v_tier2_count int;
   v_tier1_count int;
 begin
@@ -169,37 +178,39 @@ begin
     raise exception 'p_question_count must be > 0';
   end if;
 
-  if p_tier2_mix_count < 0 or p_tier2_mix_count > p_question_count then
-    raise exception 'p_tier2_mix_count must be between 0 and p_question_count';
-  end if;
-
-  select count(*) into v_total_previous
+  select coalesce(max(s.session_number), 0) + 1 into v_session_number
   from public.sessions s
   where s.couple_id = p_couple_id;
-
-  v_session_number := v_total_previous + 1;
 
   insert into public.sessions (
     couple_id,
     created_by_user_id,
     session_number,
     partner_a_user_id,
-    status
+    status,
+    question_count,
+    tier_pref
   )
   values (
     p_couple_id,
     p_created_by_user_id,
     v_session_number,
     p_partner_a_user_id,
-    'pending_partner'
+    'pending_partner',
+    p_question_count,
+    p_tier_pref
   )
   returning id into v_session_id;
 
-  if v_session_number = 1 then
-    v_tier2_count := 0;
+  -- Determine tier split based on preference
+  if p_tier_pref = 'vanilla' then
     v_tier1_count := p_question_count;
-  else
-    v_tier2_count := p_tier2_mix_count;
+    v_tier2_count := 0;
+  elsif p_tier_pref = 'spicy' then
+    v_tier1_count := 0;
+    v_tier2_count := p_question_count;
+  else -- 'mixed'
+    v_tier2_count := ceil(p_question_count::numeric / 2);
     v_tier1_count := p_question_count - v_tier2_count;
   end if;
 
@@ -239,10 +250,6 @@ begin
   insert into public.session_questions (session_id, question_id, question_order)
   select v_session_id, o.question_id, o.question_order
   from ordered o;
-
-  if (select count(*) from public.session_questions where session_id = v_session_id) < p_question_count then
-    raise exception 'Not enough unused questions for couple % to create session %', p_couple_id, v_session_number;
-  end if;
 
   return v_session_id;
 end;

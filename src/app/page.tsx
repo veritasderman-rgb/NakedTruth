@@ -30,7 +30,8 @@ export default function Home() {
           Každý z partnerů odpovídá na stejné otázky soukromě. Odpovědi uvidíte společně až ve chvíli, kdy budete mít oba hotovo.
         </p>
         <p className="text-xs italic bg-accent/30 p-3 rounded-lg border">
-          Prvních 20 otázek je spíše vztahových, ale jestli se chcete poznat opravdu důkladně, pokračujte pak dál... skutečný kink začíná až v druhém kole 😉
+          Zvolte si počet otázek i to, jestli to bude spíš o vztahu, nebo se chcete
+          poznat i pod peřinou — je to jen na vás.
         </p>
       </div>
 
