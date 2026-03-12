@@ -14,7 +14,7 @@ async function getBaseUrl() {
   return `${protocol}://${host}`;
 }
 
-export async function startSession(email?: string) {
+export async function startSession(email?: string, questionCount: number = 20, tierPref: string = 'vanilla') {
   const supabase = getSupabaseAdmin();
   const normalizedEmail = email?.toLowerCase().trim();
 
@@ -89,7 +89,9 @@ export async function startSession(email?: string) {
   const { data: sessionId, error: rpcError } = await supabase.rpc('create_next_session', {
     p_couple_id: coupleId,
     p_created_by_user_id: activeUser!.id,
-    p_partner_a_user_id: activeUser!.id
+    p_partner_a_user_id: activeUser!.id,
+    p_question_count: questionCount,
+    p_tier_pref: tierPref
   });
 
   if (rpcError) throw rpcError;
@@ -241,13 +243,29 @@ export async function invitePartner(sessionId: string, partnerBEmail?: string) {
   return { success: true, inviteLink };
 }
 
-export async function generateNextSession(coupleId: string, userId: string) {
+export async function generateNextSession(coupleId: string, userId: string, questionCount?: number, tierPref?: string) {
   const supabase = getSupabaseAdmin();
+
+  // If no preferences passed, inherit from the latest session of this couple
+  if (!questionCount || !tierPref) {
+    const { data: lastSession } = await supabase
+      .from('sessions')
+      .select('question_count, tier_pref')
+      .eq('couple_id', coupleId)
+      .order('session_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    questionCount = questionCount || lastSession?.question_count || 20;
+    tierPref = tierPref || lastSession?.tier_pref || 'vanilla';
+  }
 
   const { data: sessionId, error: rpcError } = await supabase.rpc('create_next_session', {
     p_couple_id: coupleId,
     p_created_by_user_id: userId,
-    p_partner_a_user_id: userId
+    p_partner_a_user_id: userId,
+    p_question_count: questionCount,
+    p_tier_pref: tierPref
   });
 
   if (rpcError) throw rpcError;
