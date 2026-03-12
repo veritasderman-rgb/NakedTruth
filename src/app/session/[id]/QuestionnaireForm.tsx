@@ -18,6 +18,23 @@ export default function QuestionnaireForm({ sessionId, userId, questions, role }
   const currentQuestion = questions[currentIndex];
   const progress = ((currentIndex) / questions.length) * 100;
 
+  // Parse custom scale labels from question prompt, e.g. "(1 = vůbec, 5 = hodně)"
+  const parseScaleLabels = (prompt: string): { low: string; high: string; cleanPrompt: string } => {
+    const match = prompt.match(/\(1\s*=\s*(.+?),\s*5\s*=\s*(.+?)\)\s*$/);
+    if (match) {
+      return {
+        low: match[1].trim(),
+        high: match[2].trim(),
+        cleanPrompt: prompt.replace(match[0], '').trim(),
+      };
+    }
+    return { low: 'Nikdy', high: 'Velmi často', cleanPrompt: prompt };
+  };
+
+  const scaleLabels = currentQuestion.kind === 'frequency_1_5'
+    ? parseScaleLabels(currentQuestion.prompt)
+    : null;
+
   const handleNext = () => {
     const newAnswers = [...answers, {
       questionId: currentQuestion.id,
@@ -56,7 +73,9 @@ export default function QuestionnaireForm({ sessionId, userId, questions, role }
 
         <Card className="mt-8 border-none shadow-lg">
           <CardHeader>
-            <CardTitle className="text-xl leading-tight font-semibold">{currentQuestion.prompt}</CardTitle>
+            <CardTitle className="text-xl leading-tight font-semibold">
+              {scaleLabels ? scaleLabels.cleanPrompt : currentQuestion.prompt}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {currentQuestion.kind === 'yes_no' && (
@@ -78,7 +97,7 @@ export default function QuestionnaireForm({ sessionId, userId, questions, role }
                   <div key={val} className="flex items-center space-x-2 rounded-lg border p-3 hover:bg-accent cursor-pointer transition-colors">
                     <RadioGroupItem value={val.toString()} id={`f-${val}`} />
                     <Label htmlFor={`f-${val}`} className="flex-grow cursor-pointer font-medium">
-                      {val === 1 ? 'Nikdy' : val === 5 ? 'Velmi často' : val}
+                      {val === 1 ? scaleLabels!.low : val === 5 ? scaleLabels!.high : val}
                     </Label>
                   </div>
                 ))}
