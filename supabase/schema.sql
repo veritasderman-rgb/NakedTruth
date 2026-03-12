@@ -31,7 +31,8 @@ end $$;
 -- ========= USERS =========
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
-  email text not null unique,
+  email text unique,
+  is_anonymous boolean not null default false,
   created_at timestamptz not null default now(),
   constraint users_email_lowercase check (email = lower(email))
 );
