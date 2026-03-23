@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,12 +14,12 @@ export default function QuestionnaireForm({ sessionId, userId, questions, role }
   const [answers, setAnswers] = useState<any[]>([]);
   const [currentValue, setCurrentValue] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const currentQuestion = questions[currentIndex];
   const progress = ((currentIndex) / questions.length) * 100;
 
-  // Parse custom scale labels from question prompt, e.g. "(1 = vůbec, 5 = hodně)"
-  const parseScaleLabels = (prompt: string): { low: string; high: string; cleanPrompt: string } => {
+  const parseScaleLabels = useCallback((prompt: string): { low: string; high: string; cleanPrompt: string } => {
     const match = prompt.match(/\(1\s*=\s*(.+?),\s*5\s*=\s*(.+?)\)\s*$/);
     if (match) {
       return {
@@ -29,13 +29,14 @@ export default function QuestionnaireForm({ sessionId, userId, questions, role }
       };
     }
     return { low: 'Nikdy', high: 'Velmi často', cleanPrompt: prompt };
-  };
+  }, []);
 
   const scaleLabels = currentQuestion.kind === 'frequency_1_5'
     ? parseScaleLabels(currentQuestion.prompt)
     : null;
 
   const handleNext = () => {
+    setError(null);
     const newAnswers = [...answers, {
       questionId: currentQuestion.id,
       kind: currentQuestion.kind,
@@ -51,16 +52,31 @@ export default function QuestionnaireForm({ sessionId, userId, questions, role }
     }
   };
 
+  const handleBack = () => {
+    if (currentIndex > 0) {
+      setError(null);
+      const prevAnswer = answers[answers.length - 1];
+      setCurrentValue(prevAnswer?.value ?? null);
+      setAnswers(answers.slice(0, -1));
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
   const handleSubmit = async (finalAnswers: any[]) => {
     setSubmitting(true);
+    setError(null);
     try {
       await submitAnswers(sessionId, userId, finalAnswers, role);
       window.location.reload();
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      setError("Nepodařilo se odeslat odpovědi. Zkuste to znovu.");
       setSubmitting(false);
     }
   };
+
+  const isLastQuestion = currentIndex >= questions.length - 1;
+  const canProceed = currentValue !== null && (currentQuestion.kind !== 'short_answer' || currentValue.trim().length > 0);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12">
@@ -112,14 +128,32 @@ export default function QuestionnaireForm({ sessionId, userId, questions, role }
                 className="min-h-[150px] resize-none"
               />
             )}
+
+            {error && (
+              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex gap-3">
+            {currentIndex > 0 && (
+              <Button
+                variant="outline"
+                className="h-12"
+                onClick={handleBack}
+                disabled={submitting}
+              >
+                Zpět
+              </Button>
+            )}
             <Button
-              className="w-full h-12 text-base"
+              className="flex-1 h-12 text-base"
               onClick={handleNext}
-              disabled={currentValue === null || (currentQuestion.kind === 'short_answer' && !currentValue.trim()) || submitting}
+              disabled={!canProceed || submitting}
             >
-              {currentIndex < questions.length - 1 ? "Další otázka" : (submitting ? "Odesílám..." : "Dokončit kolo")}
+              {isLastQuestion
+                ? (submitting ? "Odesílám..." : "Dokončit kolo")
+                : "Další otázka"}
             </Button>
           </CardFooter>
         </Card>

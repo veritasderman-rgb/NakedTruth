@@ -1,11 +1,30 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { notFound } from "next/navigation";
 import { joinSession } from "../../actions/session";
+import Link from "next/link";
 export const dynamic = 'force-dynamic';
 
 import QuestionnaireForm from "./QuestionnaireForm";
 import InvitePartner from "./InvitePartner";
 import ComparisonView from "./ComparisonView";
+
+function ErrorCard({ title, message, showHome = true }: { title: string; message: string; showHome?: boolean }) {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12 text-center">
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold">{title}</h1>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        {showHome && (
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Zpět na úvod
+          </Link>
+        )}
+      </div>
+    </main>
+  );
+}
 
 export default async function SessionPage({
   params,
@@ -17,10 +36,13 @@ export default async function SessionPage({
   const { id } = await params;
   const { token } = await searchParams;
 
+  if (!token) {
+    return <ErrorCard title="Chybí přístupový token" message="Odkaz je neúplný. Zkontrolujte, že jste zkopírovali celý odkaz od partnera." />;
+  }
+
   const supabase = getSupabaseAdmin();
 
   try {
-    // 1. Validate session and token
     const { data: session, error: sessionError } = await supabase
       .from("sessions")
       .select("*")
@@ -28,14 +50,7 @@ export default async function SessionPage({
       .single();
 
     if (sessionError || !session) {
-      console.error("Session lookup error:", sessionError);
-      return (
-        <div className="p-8 text-center">
-          <h1 className="text-xl font-bold">Relace nenalezena</h1>
-          <p className="text-muted-foreground mt-2">Error: {sessionError?.message || "Unknown error"}</p>
-          <p className="text-xs mt-4 text-muted-foreground">ID: {id}</p>
-        </div>
-      );
+      return <ErrorCard title="Relace nenalezena" message="Tato relace neexistuje nebo vypršela. Zkuste vytvořit novou." />;
     }
 
     let role: "partner_a" | "partner_b" | null = null;
@@ -46,85 +61,70 @@ export default async function SessionPage({
     }
 
     if (!role) {
-      return <div className="p-8 text-center">Neplatný přístupový token.</div>;
+      return <ErrorCard title="Neplatný token" message="Přístupový token je neplatný. Požádejte partnera o nový odkaz." />;
     }
 
-    // New: If Partner B is accessing for the first time and is anonymous
+    // If Partner B accessing for the first time and is anonymous
     let userId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
     if (role === "partner_b" && !userId) {
-       const res = await joinSession(id);
-       userId = res.userId;
+      const res = await joinSession(id);
+      userId = res.userId;
     }
 
-  // 2. Check if this partner already completed
-  const isCompletedByMe = role === "partner_a" ? !!session.partner_a_completed_at : !!session.partner_b_completed_at;
+    // Check if this partner already completed
+    const isCompletedByMe = role === "partner_a" ? !!session.partner_a_completed_at : !!session.partner_b_completed_at;
 
-  // 3. If both completed, show comparison
-  if (session.status === "completed") {
-    // Fetch answers and questions
-    const { data: questions } = await supabase
+    // If both completed, show comparison
+    if (session.status === "completed") {
+      const { data: questions } = await supabase
+        .from("session_questions")
+        .select("question_id, questions(*)")
+        .eq("session_id", id)
+        .order("question_order");
+
+      const { data: answers } = await supabase
+        .from("answers")
+        .select("*")
+        .eq("session_id", id);
+
+      const myUserId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
+      return <ComparisonView session={session} questions={questions || []} answers={answers || []} myUserId={myUserId} />;
+    }
+
+    // If I'm done but partner isn't, show invite/waiting
+    if (isCompletedByMe) {
+      return <InvitePartner sessionId={id} session={session} role={role} tokenB={session.partner_b_access_token} />;
+    }
+
+    // Otherwise, show questionnaire
+    const { data: sessionQuestions, error: questionsError } = await supabase
       .from("session_questions")
       .select("question_id, questions(*)")
       .eq("session_id", id)
       .order("question_order");
 
-    const { data: answers } = await supabase
-      .from("answers")
-      .select("*")
-      .eq("session_id", id);
+    if (questionsError) {
+      return <ErrorCard title="Chyba načítání" message="Nepodařilo se načíst otázky. Zkuste obnovit stránku." />;
+    }
 
-    const myUserId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
-    return <ComparisonView session={session} questions={questions || []} answers={answers || []} myUserId={myUserId} />;
-  }
+    const validQuestions = (sessionQuestions || [])
+      .map(q => q.questions)
+      .filter(Boolean);
 
-  // 4. If I'm done but partner isn't, show invite/waiting
-  if (isCompletedByMe) {
-    return <InvitePartner sessionId={id} session={session} role={role} tokenB={session.partner_b_access_token} />;
-  }
+    if (validQuestions.length === 0) {
+      return <ErrorCard title="Otázky chybí" message="Pro tuto relaci se nepodařilo načíst žádné otázky." />;
+    }
 
-  // 5. Otherwise, show questionnaire
-  const { data: sessionQuestions, error: questionsError } = await supabase
-    .from("session_questions")
-    .select("question_id, questions(*)")
-    .eq("session_id", id)
-    .order("question_order");
-
-  if (questionsError) {
-    throw new Error(`Chyba při načítání otázek: ${questionsError.message}`);
-  }
-
-  if (!sessionQuestions || sessionQuestions.length === 0) {
     return (
-      <div className="p-8 text-center">
-        <h1 className="text-xl font-bold">Otázky chybí</h1>
-        <p className="text-muted-foreground mt-2">Nepodařilo se načíst žádné otázky pro tuto relaci.</p>
-      </div>
+      <QuestionnaireForm
+        sessionId={id}
+        userId={userId}
+        questions={validQuestions}
+        role={role}
+      />
     );
-  }
-
-  const validQuestions = sessionQuestions
-    .map(q => q.questions)
-    .filter(Boolean); // Filter out any null questions from join
-
-  if (validQuestions.length === 0) {
-    return <div className="p-8 text-center">Questions exist in session but could not be loaded from main table.</div>;
-  }
-
-  return (
-    <QuestionnaireForm
-      sessionId={id}
-      userId={userId}
-      questions={validQuestions}
-      role={role}
-    />
-  );
   } catch (err: any) {
     console.error("Critical rendering error in SessionPage:", err);
-    return (
-      <div className="p-8 text-center text-destructive">
-        <h1 className="text-xl font-bold">Something went wrong</h1>
-        <p className="mt-2">{err.message || "A rendering error occurred."}</p>
-      </div>
-    );
+    return <ErrorCard title="Něco se pokazilo" message="Zkuste obnovit stránku nebo vytvořit novou relaci." />;
   }
 }
