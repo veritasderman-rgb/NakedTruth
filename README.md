@@ -1,6 +1,6 @@
 # NakedTruth
 
-Step 1 bootstrap for a Next.js 14+/15 App Router project using TypeScript, Tailwind CSS, and Shadcn UI conventions.
+Blind-comparison kvíz pro páry (Next.js 15 App Router, TypeScript, Tailwind, Shadcn UI, Supabase, Stripe, next-intl).
 
 ## Run locally
 
@@ -8,14 +8,45 @@ Step 1 bootstrap for a Next.js 14+/15 App Router project using TypeScript, Tailw
    ```bash
    npm install
    ```
-2. Start dev server:
+2. Copy `.env.example` to `.env.local` and fill in the values.
+3. Start dev server:
    ```bash
    npm run dev
    ```
 
+The app is served under a locale prefix, e.g. `http://localhost:3000/cs`.
+
 ## Structure
 
-- `src/app` - App Router pages and global styles
-- `src/components/ui` - Shadcn-compatible UI primitives
-- `src/lib` - shared utilities
-- `components.json` - Shadcn configuration
+- `src/app/[locale]` - locale-prefixed App Router pages
+- `src/app/actions` - server actions (session, auth, billing)
+- `src/app/api/stripe/webhook` - Stripe webhook handler
+- `src/app/auth/callback` - magic-link auth callback
+- `src/components` - UI + cross-cutting components (AgeGate, ConsentBanner, AnalyticsProvider)
+- `src/i18n` - next-intl routing/request config
+- `src/lib` - Supabase clients, auth, questions i18n, analytics, stripe, mail
+- `messages/{cs,en}.json` - UI translations (en falls back to cs)
+- `supabase/` - schema, seed, migrations
+
+## First-time setup (manual steps)
+
+Run the SQL migrations in the Supabase SQL editor, in order:
+
+1. `supabase/schema.sql` and `supabase/seed_questions.sql` (if not already applied)
+2. `supabase/migrations/20260312_add_session_preferences.sql`
+3. `supabase/migrations/20260601_question_translations.sql` — i18n table + backfill of Czech prompts
+4. `supabase/migrations/20260601_auth_and_entitlements.sql` — auth link, entitlements, paywall RPC
+
+Then configure:
+
+- **Supabase Auth:** enable Email (magic link) provider; add `<APP_URL>/auth/callback` to the allowed redirect URLs.
+- **Stripe:** create a one-time CZK price for the tier_2 unlock, set `STRIPE_PRICE_TIER2`; add a webhook endpoint pointing at `<APP_URL>/api/stripe/webhook` for the `checkout.session.completed` event and set `STRIPE_WEBHOOK_SECRET`.
+- **PostHog (optional):** set `NEXT_PUBLIC_POSTHOG_KEY` to enable analytics (only fires after cookie consent).
+
+## Adding a language
+
+1. Add the locale to `src/i18n/routing.ts`.
+2. Create `messages/<locale>.json` (missing keys fall back to `cs`).
+3. Insert translated question rows into `question_translations` for that locale.
+
+No application code changes are required for question content.

@@ -3,6 +3,35 @@
 > Zpracováno: 2026-06-01 · Větev: `claude/stoic-lamport-CbtDE`
 > Rozsah kola: **Analytika · 18+/Privacy · Stripe · Autosave · Kratší free kolo · Lokalizované e-maily · i18n infrastruktura**
 
+---
+
+## ✅ Stav implementace (hotovo)
+
+Všech 7 balíčků je implementováno a `npm run build` prochází.
+
+| Balíček | Stav | Klíčové soubory |
+|---|---|---|
+| A — i18n infra | ✅ | `src/i18n/*`, `src/middleware.ts`, `messages/{cs,en}.json`, přesun do `src/app/[locale]/*`, `src/lib/questions.ts`, migrace `question_translations` |
+| B — Auth | ✅ | `src/lib/supabase/{server,client}.ts`, `src/lib/auth.ts`, `src/app/[locale]/login`, `src/app/auth/callback`, `src/app/[locale]/account`, migrace `auth_user_id` |
+| C — Entitlements + Stripe | ✅ | `src/lib/stripe.ts`, `src/app/actions/billing.ts`, `src/app/api/stripe/webhook`, `src/app/[locale]/billing/*`, paywall v RPC `create_next_session` |
+| D — Autosave | ✅ | `saveAnswer`/`completeRound` v `actions/session.ts`, resume v `QuestionnaireForm` |
+| E — 18+/Privacy | ✅ | `src/components/AgeGate.tsx`, `ConsentBanner.tsx`, `src/app/[locale]/{privacy,terms}`, GDPR `deleteMyData` |
+| F — Analytika | ✅ | `src/lib/analytics.ts`, `AnalyticsProvider`, `TrackOnMount`, funnel eventy v komponentách |
+| G — E-maily + kratší kolo | ✅ | `src/lib/mail.ts` (CZ/EN), default free kolo 10 otázek |
+
+### Nutné manuální kroky před nasazením
+1. Spustit SQL migrace (viz README) — `question_translations`, `auth_and_entitlements`.
+2. Supabase: zapnout Email magic-link provider + povolit redirect `<APP_URL>/auth/callback`.
+3. Stripe: vytvořit CZK cenu pro tier_2, nastavit `STRIPE_PRICE_TIER2`, webhook na `<APP_URL>/api/stripe/webhook` (`checkout.session.completed`) + `STRIPE_WEBHOOK_SECRET`.
+4. PostHog: nastavit `NEXT_PUBLIC_POSTHOG_KEY` (analytika se spustí až po souhlasu).
+
+### Vědomé zbytky / poznámky
+- **RLS:** migrace zapínají auth, ale RLS politiky na `answers`/`entitlements` zatím nejsou aktivní (čtení jde přes service role v server actions). Před produkcí doporučeno zapnout RLS — viz riziko #2 níže.
+- `partner_completed` event z taxonomie není automaticky odpalován (chybí realtime, plánováno do P1).
+- EN překlady obsahu (UI i otázek) jsou prázdné a padají zpět na CZ — dle zadání.
+
+---
+
 ## Schválená rozhodnutí (vstup do plánu)
 
 | Oblast | Rozhodnutí |
