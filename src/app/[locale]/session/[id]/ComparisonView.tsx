@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { generateNextSession } from "@/app/actions/session";
+import { createTier2Checkout } from "@/app/actions/billing";
 import { track } from "@/lib/analytics";
-import { ChevronRight, BarChart3, Share2 } from "lucide-react";
+import { ChevronRight, BarChart3, Share2, Lock } from "lucide-react";
 import type { LocalizedQuestion } from "@/lib/questions";
 
 type Answer = {
@@ -41,7 +43,10 @@ export default function ComparisonView({
 }) {
   const t = useTranslations('results');
   const tc = useTranslations('common');
+  const locale = useLocale();
+  const router = useRouter();
   const [generating, setGenerating] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
 
@@ -105,6 +110,25 @@ export default function ComparisonView({
       if (error?.digest?.startsWith?.('NEXT_REDIRECT')) throw error;
       console.error(error);
       setGenerating(false);
+    }
+  };
+
+  const handleUnlockTier2 = async () => {
+    setUnlocking(true);
+    track('paywall_viewed', { source: 'results' });
+    try {
+      track('checkout_started', { product: 'tier_2' });
+      const res = await createTier2Checkout();
+      if (res.ok) {
+        window.location.href = res.url;
+      } else if (res.reason === 'auth_required') {
+        router.push('/login');
+      } else {
+        setUnlocking(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setUnlocking(false);
     }
   };
 
@@ -225,6 +249,23 @@ export default function ComparisonView({
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground">{t('nextRoundTeaser')}</p>
+            </CardContent>
+          </Card>
+
+          {/* tier_2 paywall upsell */}
+          <Card className="mt-4 border-2 border-amber-200 bg-amber-50/40">
+            <CardContent className="py-6 text-center space-y-3">
+              <Lock className="h-6 w-6 mx-auto text-amber-600" />
+              <p className="text-base font-semibold">{t('unlockTier2Title')}</p>
+              <p className="text-sm text-muted-foreground">{t('unlockTier2Desc')}</p>
+              <Button
+                variant="outline"
+                className="h-11 border-amber-300 text-amber-800 hover:bg-amber-100"
+                onClick={handleUnlockTier2}
+                disabled={unlocking}
+              >
+                {unlocking ? t('redirecting') : t('unlockTier2Cta')}
+              </Button>
             </CardContent>
           </Card>
         </div>

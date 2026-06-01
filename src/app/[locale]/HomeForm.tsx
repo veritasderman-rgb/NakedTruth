@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AgeGate } from "@/components/AgeGate";
 import { track } from "@/lib/analytics";
 import { startSession } from "@/app/actions/session";
+import { createTier2Checkout } from "@/app/actions/billing";
+import { PAYWALL_ERROR } from "@/lib/constants";
 
 type TierPref = 'vanilla' | 'spicy' | 'mixed';
 
@@ -15,6 +18,7 @@ const TIER_VALUES: TierPref[] = ['vanilla', 'spicy', 'mixed'];
 
 export default function HomeForm({ isConfigured, missingVars }: { isConfigured: boolean, missingVars: string[] }) {
   const t = useTranslations('home');
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +43,21 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
     } catch (err: any) {
       // Next.js redirect throws — let it bubble.
       if (err?.digest?.startsWith?.('NEXT_REDIRECT')) throw err;
+
+      // tier_2 requested without entitlement → send to checkout (or login).
+      if (err?.message === PAYWALL_ERROR) {
+        track('paywall_viewed', { source: 'home' });
+        const res = await createTier2Checkout();
+        if (res.ok) {
+          window.location.href = res.url;
+          return;
+        }
+        if (res.reason === 'auth_required') {
+          router.push('/login');
+          return;
+        }
+      }
+
       console.error("Failed to start session:", err);
       setError(err.message || t('genericError'));
       setLoading(false);
