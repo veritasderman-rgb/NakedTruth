@@ -1,7 +1,17 @@
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import HomeForm from "./HomeForm";
 export const dynamic = 'force-dynamic';
 
-export default function Home() {
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("home");
+
   const config = {
     supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -11,31 +21,38 @@ export default function Home() {
 
   const isConfigured = config.supabaseUrl && config.supabaseAnonKey && config.supabaseServiceKey;
 
-  const missingVars = [];
-  if (!config.supabaseUrl) missingVars.push("NEXT_PUBLIC_SUPABASE_URL");
-  if (!config.supabaseAnonKey) missingVars.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  if (!config.supabaseServiceKey) missingVars.push("SUPABASE_SERVICE_ROLE_KEY");
-  if (!config.appUrl) missingVars.push("NEXT_PUBLIC_APP_URL");
+  // Only surface raw env diagnostics outside production — never leak internals to end users.
+  const missingVars: string[] = [];
+  if (process.env.NODE_ENV !== 'production') {
+    if (!config.supabaseUrl) missingVars.push("NEXT_PUBLIC_SUPABASE_URL");
+    if (!config.supabaseAnonKey) missingVars.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    if (!config.supabaseServiceKey) missingVars.push("SUPABASE_SERVICE_ROLE_KEY");
+    if (!config.appUrl) missingVars.push("NEXT_PUBLIC_APP_URL");
+  }
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12 text-center">
       <span className="mb-4 inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-        NakedTruth · Beta
+        {t("badge")}
       </span>
       <h1 className="text-balance text-4xl font-semibold tracking-tight">
-        Poznejte se upřímně a bez zábran.
+        {t("title")}
       </h1>
       <div className="mt-4 space-y-4 text-pretty text-sm text-muted-foreground">
-        <p>
-          Každý z partnerů odpovídá na stejné otázky soukromě. Odpovědi uvidíte společně až ve chvíli, kdy budete mít oba hotovo.
-        </p>
+        <p>{t("intro")}</p>
         <p className="text-xs italic bg-accent/30 p-3 rounded-lg border">
-          Zvolte si počet otázek i to, jestli to bude spíš o vztahu, nebo se chcete
-          poznat i pod peřinou — je to jen na vás.
+          {t("introHint")}
         </p>
       </div>
 
       <HomeForm isConfigured={!!isConfigured} missingVars={missingVars} />
+
+      <Link
+        href="/login"
+        className="mt-8 text-xs text-muted-foreground underline hover:text-foreground transition-colors"
+      >
+        {t("loginLink")}
+      </Link>
     </main>
   );
 }

@@ -1,13 +1,16 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { joinSession } from "../../actions/session";
-import Link from "next/link";
+import { localizeQuestions } from "@/lib/questions";
+import { joinSession } from "@/app/actions/session";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 export const dynamic = 'force-dynamic';
 
 import QuestionnaireForm from "./QuestionnaireForm";
 import InvitePartner from "./InvitePartner";
 import ComparisonView from "./ComparisonView";
 
-function ErrorCard({ title, message, showHome = true }: { title: string; message: string; showHome?: boolean }) {
+async function ErrorCard({ title, message, showHome = true }: { title: string; message: string; showHome?: boolean }) {
+  const t = await getTranslations("common");
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12 text-center">
       <div className="space-y-4">
@@ -18,7 +21,7 @@ function ErrorCard({ title, message, showHome = true }: { title: string; message
             href="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Zpět na úvod
+            {t("backHome")}
           </Link>
         )}
       </div>
@@ -30,14 +33,16 @@ export default async function SessionPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: string }>;
   searchParams: Promise<{ token: string }>;
 }) {
-  const { id } = await params;
+  const { id, locale } = await params;
   const { token } = await searchParams;
+  setRequestLocale(locale);
+  const te = await getTranslations("errors");
 
   if (!token) {
-    return <ErrorCard title="Chybí přístupový token" message="Odkaz je neúplný. Zkontrolujte, že jste zkopírovali celý odkaz od partnera." />;
+    return <ErrorCard title={te("missingTokenTitle")} message={te("missingTokenMsg")} />;
   }
 
   const supabase = getSupabaseAdmin();
@@ -50,7 +55,7 @@ export default async function SessionPage({
       .single();
 
     if (sessionError || !session) {
-      return <ErrorCard title="Relace nenalezena" message="Tato relace neexistuje nebo vypršela. Zkuste vytvořit novou." />;
+      return <ErrorCard title={te("sessionNotFoundTitle")} message={te("sessionNotFoundMsg")} />;
     }
 
     let role: "partner_a" | "partner_b" | null = null;
@@ -61,7 +66,7 @@ export default async function SessionPage({
     }
 
     if (!role) {
-      return <ErrorCard title="Neplatný token" message="Přístupový token je neplatný. Požádejte partnera o nový odkaz." />;
+      return <ErrorCard title={te("invalidTokenTitle")} message={te("invalidTokenMsg")} />;
     }
 
     // If Partner B accessing for the first time and is anonymous
@@ -71,12 +76,11 @@ export default async function SessionPage({
       userId = res.userId;
     }
 
-    // Check if this partner already completed
     const isCompletedByMe = role === "partner_a" ? !!session.partner_a_completed_at : !!session.partner_b_completed_at;
 
     // If both completed, show comparison
     if (session.status === "completed") {
-      const { data: questions } = await supabase
+      const { data: sq } = await supabase
         .from("session_questions")
         .select("question_id, questions(*)")
         .eq("session_id", id)
@@ -87,8 +91,19 @@ export default async function SessionPage({
         .select("*")
         .eq("session_id", id);
 
-      const myUserId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
-      return <ComparisonView session={session} questions={questions || []} answers={answers || []} myUserId={myUserId} />;
+      const rawQuestions = (sq || []).map((r: any) => r.questions).filter(Boolean);
+      const questions = await localizeQuestions(supabase, rawQuestions, locale);
+
+      return (
+        <ComparisonView
+          session={session}
+          questions={questions}
+          answers={answers || []}
+          partnerAId={session.partner_a_user_id}
+          partnerBId={session.partner_b_user_id}
+          myUserId={userId}
+        />
+      );
     }
 
     // If I'm done but partner isn't, show invite/waiting
@@ -104,27 +119,35 @@ export default async function SessionPage({
       .order("question_order");
 
     if (questionsError) {
-      return <ErrorCard title="Chyba načítání" message="Nepodařilo se načíst otázky. Zkuste obnovit stránku." />;
+      return <ErrorCard title={te("loadTitle")} message={te("loadMsg")} />;
     }
 
-    const validQuestions = (sessionQuestions || [])
-      .map(q => q.questions)
-      .filter(Boolean);
+    const rawQuestions = (sessionQuestions || []).map((q: any) => q.questions).filter(Boolean);
 
-    if (validQuestions.length === 0) {
-      return <ErrorCard title="Otázky chybí" message="Pro tuto relaci se nepodařilo načíst žádné otázky." />;
+    if (rawQuestions.length === 0) {
+      return <ErrorCard title={te("noQuestionsTitle")} message={te("noQuestionsMsg")} />;
     }
+
+    const questions = await localizeQuestions(supabase, rawQuestions, locale);
+
+    // Load any answers this user already saved (autosave / resume).
+    const { data: existing } = await supabase
+      .from("answers")
+      .select("question_id, answer_yes_no, answer_frequency, answer_text")
+      .eq("session_id", id)
+      .eq("user_id", userId);
 
     return (
       <QuestionnaireForm
         sessionId={id}
         userId={userId}
-        questions={validQuestions}
+        questions={questions}
         role={role}
+        existingAnswers={existing || []}
       />
     );
   } catch (err: any) {
     console.error("Critical rendering error in SessionPage:", err);
-    return <ErrorCard title="Něco se pokazilo" message="Zkuste obnovit stránku nebo vytvořit novou relaci." />;
+    return <ErrorCard title={te("criticalTitle")} message={te("criticalMsg")} />;
   }
 }

@@ -1,90 +1,120 @@
 'use client';
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { startSession } from "./actions/session";
+import { AgeGate } from "@/components/AgeGate";
+import { track } from "@/lib/analytics";
+import { startSession } from "@/app/actions/session";
 
 type TierPref = 'vanilla' | 'spicy' | 'mixed';
 
 const QUESTION_COUNTS = [5, 10, 20, 40] as const;
-
-const TIER_OPTIONS: { value: TierPref; label: string; desc: string }[] = [
-  { value: 'vanilla', label: 'Vztahy & soužití', desc: 'Každodenní život, komunikace, hodnoty a plány do budoucna' },
-  { value: 'spicy', label: 'Pod peřinou', desc: 'Intimita, touhy, fantazie a vše, co se normálně neřekne nahlas' },
-  { value: 'mixed', label: 'Namixuj obojí', desc: 'Půlka vztahových, půlka pikantních — nejlepší z obou světů' },
-];
+const TIER_VALUES: TierPref[] = ['vanilla', 'spicy', 'mixed'];
 
 export default function HomeForm({ isConfigured, missingVars }: { isConfigured: boolean, missingVars: string[] }) {
+  const t = useTranslations('home');
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [questionCount, setQuestionCount] = useState<number>(20);
+  const [questionCount, setQuestionCount] = useState<number>(10);
   const [tierPref, setTierPref] = useState<TierPref>('vanilla');
+  const [pendingStart, setPendingStart] = useState<{ email?: string } | null>(null);
 
-  const handleStart = async (emailToUse?: string) => {
+  const tierLabels: Record<TierPref, { label: string; desc: string }> = {
+    vanilla: { label: t('tierVanillaLabel'), desc: t('tierVanillaDesc') },
+    spicy: { label: t('tierSpicyLabel'), desc: t('tierSpicyDesc') },
+    mixed: { label: t('tierMixedLabel'), desc: t('tierMixedDesc') },
+  };
+
+  const requiresAge = tierPref === 'spicy' || tierPref === 'mixed';
+
+  const runStart = async (emailToUse?: string) => {
     setLoading(true);
     setError(null);
     try {
+      track('config_selected', { tier: tierPref, count: questionCount, withEmail: !!emailToUse });
       await startSession(emailToUse, questionCount, tierPref);
     } catch (err: any) {
+      // Next.js redirect throws — let it bubble.
+      if (err?.digest?.startsWith?.('NEXT_REDIRECT')) throw err;
       console.error("Failed to start session:", err);
-      setError(err.message || "Něco se nepovedlo. Zkontrolujte připojení k databázi.");
+      setError(err.message || t('genericError'));
       setLoading(false);
     }
   };
 
+  const handleStart = (emailToUse?: string) => {
+    // Spicy/mixed needs 18+ confirmation first (package E).
+    if (requiresAge) {
+      setPendingStart({ email: emailToUse });
+      return;
+    }
+    runStart(emailToUse);
+  };
+
   return (
     <div className="w-full max-w-sm mx-auto">
-      {!isConfigured && (
+      {!isConfigured && missingVars.length > 0 && (
         <div className="mt-8 rounded-md bg-yellow-50 p-4 text-left text-xs text-yellow-800 border border-yellow-200">
-          <p className="font-bold text-sm">Chybí konfigurace</p>
+          <p className="font-bold text-sm">{t('configMissingTitle')}</p>
           <ul className="mt-2 list-disc list-inside space-y-1">
             {missingVars.map(v => <li key={v}>{v}</li>)}
           </ul>
-          <p className="mt-2">Přidejte tyto proměnné do nastavení projektu na Vercelu.</p>
+          <p className="mt-2">{t('configMissingHint')}</p>
         </div>
       )}
 
       <div className="mt-10 space-y-8">
         {/* Tier preference */}
         <div className="space-y-3">
-          <label className="text-xs font-medium text-muted-foreground ml-1">Jaké otázky chcete?</label>
+          <label className="text-xs font-medium text-muted-foreground ml-1">{t('tierQuestion')}</label>
           <div className="grid gap-2">
-            {TIER_OPTIONS.map((opt) => (
+            {TIER_VALUES.map((value) => (
               <button
-                key={opt.value}
+                key={value}
                 type="button"
-                onClick={() => setTierPref(opt.value)}
+                onClick={() => setTierPref(value)}
                 className={`group relative rounded-xl border-2 p-3 text-left transition-all ${
-                  tierPref === opt.value
+                  tierPref === value
                     ? 'border-primary bg-primary/5 shadow-sm'
                     : 'border-muted hover:border-muted-foreground/30'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-                    tierPref === opt.value ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                    tierPref === value ? 'border-primary bg-primary' : 'border-muted-foreground/30'
                   }`}>
-                    {tierPref === opt.value && (
+                    {tierPref === value && (
                       <span className="h-2 w-2 rounded-full bg-white" />
                     )}
                   </span>
-                  <div className="min-w-0">
-                    <span className={`text-sm font-semibold ${tierPref === opt.value ? 'text-primary' : ''}`}>
-                      {opt.label}
+                  <div className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${tierPref === value ? 'text-primary' : ''}`}>
+                        {tierLabels[value].label}
+                      </span>
+                      {value !== 'vanilla' && (
+                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700">
+                          {t('premiumBadge')}
+                        </span>
+                      )}
                     </span>
-                    <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{opt.desc}</p>
+                    <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{tierLabels[value].desc}</p>
                   </div>
                 </div>
               </button>
             ))}
           </div>
+          {requiresAge && (
+            <p className="text-[10px] text-muted-foreground ml-1">{t('ageNotice')}</p>
+          )}
         </div>
 
         {/* Question count */}
         <div className="space-y-3">
-          <label className="text-xs font-medium text-muted-foreground ml-1">Kolik otázek?</label>
+          <label className="text-xs font-medium text-muted-foreground ml-1">{t('countQuestion')}</label>
           <div className="grid grid-cols-4 gap-2">
             {QUESTION_COUNTS.map((count) => (
               <button
@@ -102,7 +132,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground text-center">
-            {questionCount <= 10 ? 'Rychlá ochutnávka' : questionCount === 20 ? 'Ideální porce' : 'Pro ty, co se nebojí jít do hloubky'}
+            {questionCount <= 10 ? t('countHintShort') : questionCount === 20 ? t('countHintMedium') : t('countHintLong')}
           </p>
         </div>
 
@@ -112,17 +142,17 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
           className="space-y-3"
         >
           <div className="space-y-1 text-left">
-            <label className="text-xs font-medium text-muted-foreground ml-1">E-mail (pro zaslání výsledků)</label>
+            <label className="text-xs font-medium text-muted-foreground ml-1">{t('emailLabel')}</label>
             <Input
               type="email"
-              placeholder="vás@email.cz"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={!isConfigured || loading}
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading || !isConfigured || !email}>
-            {loading ? "Startuji..." : "Začít s e-mailem"}
+            {loading ? t('starting') : t('startWithEmail')}
           </Button>
         </form>
 
@@ -131,7 +161,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">Nebo</span>
+            <span className="bg-background px-2 text-muted-foreground">{t('or')}</span>
           </div>
         </div>
 
@@ -142,10 +172,10 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
             onClick={() => handleStart()}
             disabled={loading || !isConfigured}
           >
-            {loading ? "Startuji..." : "Začít anonymně"}
+            {loading ? t('starting') : t('startAnonymous')}
           </Button>
           <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Při anonymním vstupu budete muset odkaz partnerovi poslat ručně. Výsledky se nebudou mít kam uložit pro pozdější přístup.
+            {t('anonymousNote')}
           </p>
         </div>
 
@@ -155,6 +185,17 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
           </div>
         )}
       </div>
+
+      {pendingStart && (
+        <AgeGate
+          onConfirm={() => {
+            const p = pendingStart;
+            setPendingStart(null);
+            runStart(p.email);
+          }}
+          onCancel={() => setPendingStart(null)}
+        />
+      )}
     </div>
   );
 }

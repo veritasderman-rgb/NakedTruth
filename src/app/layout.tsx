@@ -1,24 +1,8 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { ReactNode } from "react";
 
-export const metadata: Metadata = {
-  title: "NakedTruth — Poznejte se upřímně",
-  description: "Blind-comparison kvíz pro páry. Odpovězte na stejné otázky odděleně a porovnejte výsledky.",
-  openGraph: {
-    title: "NakedTruth — Poznejte se upřímně",
-    description: "Blind-comparison kvíz pro páry. Odpovězte na stejné otázky odděleně a porovnejte výsledky.",
-    type: "website",
-  },
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="cs">
-      <body>{children}</body>
-    </html>
-  );
+// The real <html>/<body> shell lives in [locale]/layout.tsx so it can set the
+// correct `lang`. This root layout only forwards children, as required by the
+// App Router.
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return children;
 }

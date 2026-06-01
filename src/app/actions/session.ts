@@ -2,8 +2,10 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { sendInviteEmail } from '@/lib/mail';
-import { redirect } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
+import { redirect } from '@/i18n/navigation';
 import { headers } from 'next/headers';
+import { PAYWALL_ERROR } from '@/lib/constants';
 
 async function getBaseUrl() {
   if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL !== 'undefined') {
@@ -14,14 +16,14 @@ async function getBaseUrl() {
   return `${protocol}://${host}`;
 }
 
-export async function startSession(email?: string, questionCount: number = 20, tierPref: string = 'vanilla') {
+export async function startSession(email?: string, questionCount: number = 10, tierPref: string = 'vanilla') {
   const supabase = getSupabaseAdmin();
+  const locale = await getLocale();
   const normalizedEmail = email?.toLowerCase().trim();
 
   let activeUser;
 
   if (normalizedEmail) {
-    // 1. Get or create user by email
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
@@ -45,7 +47,6 @@ export async function startSession(email?: string, questionCount: number = 20, t
       activeUser = newUser;
     }
   } else {
-    // Create anonymous user
     const { data: newUser, error: createError } = await supabase
       .from('users')
       .insert({ is_anonymous: true })
@@ -56,8 +57,6 @@ export async function startSession(email?: string, questionCount: number = 20, t
     activeUser = newUser;
   }
 
-  // 2. Check if user is already in a couple, otherwise create a standalone couple for now
-  // In this simplified flow, User A starts, then later invites User B.
   const { data: member } = await supabase
     .from('couple_members')
     .select('couple_id')
@@ -67,7 +66,6 @@ export async function startSession(email?: string, questionCount: number = 20, t
   let coupleId = member?.couple_id;
 
   if (!coupleId) {
-    // Create new couple
     const { data: newCouple, error: coupleError } = await supabase
       .from('couples')
       .insert({ created_by_user_id: activeUser!.id })
@@ -77,7 +75,6 @@ export async function startSession(email?: string, questionCount: number = 20, t
     if (coupleError) throw coupleError;
     coupleId = newCouple.id;
 
-    // Add User A as member
     await supabase.from('couple_members').insert({
       couple_id: coupleId,
       user_id: activeUser!.id,
@@ -85,18 +82,8 @@ export async function startSession(email?: string, questionCount: number = 20, t
     });
   }
 
-  // 3. Create next session using RPC
-  const { data: sessionId, error: rpcError } = await supabase.rpc('create_next_session', {
-    p_couple_id: coupleId,
-    p_created_by_user_id: activeUser!.id,
-    p_partner_a_user_id: activeUser!.id,
-    p_question_count: questionCount,
-    p_tier_pref: tierPref
-  });
+  const sessionId = await createSessionOrPaywall(coupleId, activeUser!.id, activeUser!.id, questionCount, tierPref);
 
-  if (rpcError) throw rpcError;
-
-  // 4. Get access token for partner A
   const { data: session } = await supabase
     .from('sessions')
     .select('partner_a_access_token')
@@ -105,13 +92,40 @@ export async function startSession(email?: string, questionCount: number = 20, t
 
   if (!session) throw new Error('Session creation failed');
 
-  redirect(`/session/${sessionId}?token=${session.partner_a_access_token}`);
+  redirect({ href: `/session/${sessionId}?token=${session.partner_a_access_token}`, locale });
+}
+
+// Calls the RPC and translates its PAYWALL signal into a typed error the
+// client can catch and turn into a Stripe Checkout redirect.
+async function createSessionOrPaywall(
+  coupleId: string,
+  createdBy: string,
+  partnerA: string,
+  questionCount: number,
+  tierPref: string
+): Promise<string> {
+  const supabase = getSupabaseAdmin();
+  const { data: sessionId, error: rpcError } = await supabase.rpc('create_next_session', {
+    p_couple_id: coupleId,
+    p_created_by_user_id: createdBy,
+    p_partner_a_user_id: partnerA,
+    p_question_count: questionCount,
+    p_tier_pref: tierPref,
+    p_user_id: partnerA,
+  });
+
+  if (rpcError) {
+    if (rpcError.message?.includes('PAYWALL')) {
+      throw new Error(PAYWALL_ERROR);
+    }
+    throw rpcError;
+  }
+  return sessionId as string;
 }
 
 export async function joinSession(sessionId: string) {
   const supabase = getSupabaseAdmin();
 
-  // Create anonymous User B
   const { data: newUserB, error: createError } = await supabase
     .from('users')
     .insert({ is_anonymous: true })
@@ -120,7 +134,6 @@ export async function joinSession(sessionId: string) {
 
   if (createError) throw createError;
 
-  // Get session info
   const { data: session, error: sessionError } = await supabase
     .from('sessions')
     .select('couple_id')
@@ -129,10 +142,8 @@ export async function joinSession(sessionId: string) {
 
   if (sessionError || !session) throw new Error('Relace nebyla nalezena');
 
-  // Update session with User B
   await supabase.from('sessions').update({ partner_b_user_id: newUserB.id }).eq('id', sessionId);
 
-  // Add User B to couple
   await supabase.from('couple_members').insert({
     couple_id: session.couple_id,
     user_id: newUserB.id,
@@ -142,42 +153,55 @@ export async function joinSession(sessionId: string) {
   return { success: true, userId: newUserB.id };
 }
 
-export async function submitAnswers(sessionId: string, userId: string, answers: { questionId: number, kind: string, value: any }[], role: string) {
+// Autosave a single answer (upsert). Called after each question so progress
+// survives reloads / connection drops. Relies on the
+// unique(session_id, question_id, user_id) constraint.
+export async function saveAnswer(
+  sessionId: string,
+  userId: string,
+  questionId: number,
+  kind: string,
+  value: any
+) {
   const supabase = getSupabaseAdmin();
-
-  // Insert answers
-  const formattedAnswers = answers.map(a => ({
+  const row = {
     session_id: sessionId,
-    question_id: a.questionId,
+    question_id: questionId,
     user_id: userId,
-    answer_yes_no: a.kind === 'yes_no' ? a.value : null,
-    answer_frequency: a.kind === 'frequency_1_5' ? parseInt(a.value) : null,
-    answer_text: a.kind === 'short_answer' ? a.value : null,
-  }));
+    answer_yes_no: kind === 'yes_no' ? value === 'true' || value === true : null,
+    answer_frequency: kind === 'frequency_1_5' ? parseInt(value) : null,
+    answer_text: kind === 'short_answer' ? value : null,
+  };
 
-  const { error: insertError } = await supabase.from('answers').insert(formattedAnswers);
-  if (insertError) throw insertError;
+  const { error } = await supabase
+    .from('answers')
+    .upsert(row, { onConflict: 'session_id,question_id,user_id' });
 
-  // Mark completion
-  const { error: completeError } = await supabase.rpc('complete_partner_submission', {
+  if (error) throw error;
+  return { success: true };
+}
+
+// Marks this partner's round as complete. Answers are already persisted via
+// saveAnswer, so this only flips completion state.
+export async function completeRound(sessionId: string, userId: string, role: string) {
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.rpc('complete_partner_submission', {
     p_session_id: sessionId,
     p_user_id: userId,
-    p_role: role
+    p_role: role,
   });
-
-  if (completeError) throw completeError;
-
+  if (error) throw error;
   return { success: true };
 }
 
 export async function invitePartner(sessionId: string, partnerBEmail?: string) {
   const supabase = getSupabaseAdmin();
+  const locale = await getLocale();
   const normalizedEmail = partnerBEmail?.toLowerCase().trim();
 
   let activeUserB;
 
   if (normalizedEmail) {
-    // 1. Get or create User B
     const { data: userB } = await supabase
       .from('users')
       .select('id')
@@ -195,7 +219,6 @@ export async function invitePartner(sessionId: string, partnerBEmail?: string) {
       activeUserB = newUserB;
     }
   } else {
-    // Create anonymous User B
     const { data: newUserB } = await supabase
       .from('users')
       .insert({ is_anonymous: true })
@@ -204,7 +227,6 @@ export async function invitePartner(sessionId: string, partnerBEmail?: string) {
     activeUserB = newUserB;
   }
 
-  // 2. Get session and couple info
   const { data: session } = await supabase
     .from('sessions')
     .select('couple_id, partner_b_access_token')
@@ -213,10 +235,8 @@ export async function invitePartner(sessionId: string, partnerBEmail?: string) {
 
   if (!session) throw new Error('Session not found');
 
-  // 3. Update session with User B
   await supabase.from('sessions').update({ partner_b_user_id: activeUserB!.id }).eq('id', sessionId);
 
-  // 4. Add User B to couple if not already
   const { data: existingMember } = await supabase
     .from('couple_members')
     .select('id')
@@ -232,12 +252,11 @@ export async function invitePartner(sessionId: string, partnerBEmail?: string) {
     });
   }
 
-  // 5. Send email if provided
   const baseUrl = await getBaseUrl();
-  const inviteLink = `${baseUrl}/session/${sessionId}?token=${session.partner_b_access_token}`;
+  const inviteLink = `${baseUrl}/${locale}/session/${sessionId}?token=${session.partner_b_access_token}`;
 
   if (normalizedEmail) {
-    await sendInviteEmail(normalizedEmail, inviteLink);
+    await sendInviteEmail(normalizedEmail, inviteLink, locale);
   }
 
   return { success: true, inviteLink };
@@ -245,8 +264,8 @@ export async function invitePartner(sessionId: string, partnerBEmail?: string) {
 
 export async function generateNextSession(coupleId: string, userId: string, questionCount?: number, tierPref?: string) {
   const supabase = getSupabaseAdmin();
+  const locale = await getLocale();
 
-  // If no preferences passed, inherit from the latest session of this couple
   if (!questionCount || !tierPref) {
     const { data: lastSession } = await supabase
       .from('sessions')
@@ -256,19 +275,11 @@ export async function generateNextSession(coupleId: string, userId: string, ques
       .limit(1)
       .single();
 
-    questionCount = questionCount || lastSession?.question_count || 20;
+    questionCount = questionCount || lastSession?.question_count || 10;
     tierPref = tierPref || lastSession?.tier_pref || 'vanilla';
   }
 
-  const { data: sessionId, error: rpcError } = await supabase.rpc('create_next_session', {
-    p_couple_id: coupleId,
-    p_created_by_user_id: userId,
-    p_partner_a_user_id: userId,
-    p_question_count: questionCount,
-    p_tier_pref: tierPref
-  });
-
-  if (rpcError) throw rpcError;
+  const sessionId = await createSessionOrPaywall(coupleId, userId, userId, questionCount ?? 10, tierPref ?? 'vanilla');
 
   const { data: session } = await supabase
     .from('sessions')
@@ -278,5 +289,5 @@ export async function generateNextSession(coupleId: string, userId: string, ques
 
   if (!session) throw new Error('Session creation failed');
 
-  redirect(`/session/${sessionId}?token=${session.partner_a_access_token}`);
+  redirect({ href: `/session/${sessionId}?token=${session.partner_a_access_token}`, locale });
 }
