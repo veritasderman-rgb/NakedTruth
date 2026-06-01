@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
+import { TrackOnMount } from '@/components/TrackOnMount';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default async function BillingSuccess({
@@ -13,6 +14,7 @@ export default async function BillingSuccess({
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12 text-center">
+      <TrackOnMount event="purchase_completed" properties={{ product: 'tier_2' }} />
       <Card className="w-full border-none shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl">{t('successTitle')}</CardTitle>

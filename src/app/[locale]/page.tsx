@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { TrackOnMount } from "@/components/TrackOnMount";
 import HomeForm from "./HomeForm";
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,7 @@ export default async function Home({
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12 text-center">
+      <TrackOnMount event="landing_view" />
       <span className="mb-4 inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
         {t("badge")}
       </span>
