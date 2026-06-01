@@ -6,6 +6,7 @@ import { getLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { headers } from 'next/headers';
 import { PAYWALL_ERROR } from '@/lib/constants';
+import { getCurrentUser } from '@/lib/auth';
 
 async function getBaseUrl() {
   if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL !== 'undefined') {
@@ -23,7 +24,11 @@ export async function startSession(email?: string, questionCount: number = 10, t
 
   let activeUser;
 
-  if (normalizedEmail) {
+  // Prefer the signed-in account so entitlements (tier_2) resolve correctly.
+  const current = await getCurrentUser();
+  if (current) {
+    activeUser = { id: current.id };
+  } else if (normalizedEmail) {
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
