@@ -36,6 +36,7 @@ Run the SQL migrations in the Supabase SQL editor, in order:
 2. `supabase/migrations/20260312_add_session_preferences.sql`
 3. `supabase/migrations/20260601_question_translations.sql` — i18n table + backfill of Czech prompts
 4. `supabase/migrations/20260601_auth_and_entitlements.sql` — auth link, entitlements, paywall RPC
+5. `supabase/migrations/20260601_enable_rls.sql` — enable Row Level Security (defense-in-depth)
 
 Then configure:
 

@@ -26,7 +26,7 @@ Všech 7 balíčků je implementováno a `npm run build` prochází.
 4. PostHog: nastavit `NEXT_PUBLIC_POSTHOG_KEY` (analytika se spustí až po souhlasu).
 
 ### Vědomé zbytky / poznámky
-- **RLS:** migrace zapínají auth, ale RLS politiky na `answers`/`entitlements` zatím nejsou aktivní (čtení jde přes service role v server actions). Před produkcí doporučeno zapnout RLS — viz riziko #2 níže.
+- **RLS:** ✅ doplněno — `supabase/migrations/20260601_enable_rls.sql` zapíná RLS na všech tabulkách (deny-by-default na citlivých, veřejné čtení jen na `questions`/`question_translations`). App jede přes service role, takže se nic nerozbije; anon klíč je nyní uzamčen. Per-row politiky pro klientská čtení se doplní, až bude klient číst data napřímo.
 - `partner_completed` event z taxonomie není automaticky odpalován (chybí realtime, plánováno do P1).
 - EN překlady obsahu (UI i otázek) jsou prázdné a padají zpět na CZ — dle zadání.
 
