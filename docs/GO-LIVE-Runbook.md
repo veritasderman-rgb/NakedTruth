@@ -3,6 +3,8 @@
 > Kód je hotový a v PR #15. Tento runbook je **konfigurace prostředí**, bez které appka nepoběží.
 > Pořadí dodržet: **1) Supabase migrace → 2) Supabase Auth → 3) Stripe → 4) Vercel ENV → 5) smoke test.**
 > `<APP_URL>` = veřejná adresa nasazení (např. `https://naked-truth.vercel.app` nebo vlastní doména).
+>
+> ✅ **KROK 1 už je hotový** na projektu `ombtubibbjmrxdlbpaio` — všech 6 migrací (vč. RLS + hardening) bylo aplikováno přes MCP a ověřeno (300 překladů, paywall RPC, RLS, žádné security WARNy mimo záměrně veřejné `questions`). Zbývají kroky 2–4 (Auth / Stripe / Vercel), které vyžadují přístup do tvých účtů.
 
 ---
 

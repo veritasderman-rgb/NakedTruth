@@ -37,6 +37,7 @@ Run the SQL migrations in the Supabase SQL editor, in order:
 3. `supabase/migrations/20260601_question_translations.sql` — i18n table + backfill of Czech prompts
 4. `supabase/migrations/20260601_auth_and_entitlements.sql` — auth link, entitlements, paywall RPC
 5. `supabase/migrations/20260601_enable_rls.sql` — enable Row Level Security (defense-in-depth)
+6. `supabase/migrations/20260601_harden_grants.sql` — drop stale RPC overloads, lock function EXECUTE / table grants to the service role
 
 Then configure:
 
