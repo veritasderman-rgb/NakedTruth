@@ -78,10 +78,26 @@ export default function ComparisonView({
     return { q, valA, valB, isMatch };
   });
 
-  const comparableQuestions = questionData.filter((d) => d.q.kind !== 'short_answer');
+  const comparableQuestions = questionData.filter((d) => d.q.kind !== 'short_answer' && !d.q.isCalibration);
   const matchCount = comparableQuestions.filter((d) => d.isMatch).length;
   const matchPercent = comparableQuestions.length > 0 ? Math.round((matchCount / comparableQuestions.length) * 100) : 0;
   const matchLabel = getMatchLabel(matchPercent);
+
+  // Sexual compatibility from the calibration ("naladění") questions — closeness
+  // on the 1–5 scale rather than exact match.
+  const calItems = questionData.filter(
+    (d) => d.q.isCalibration && d.valA != null && d.valB != null
+  );
+  const compatPercent = calItems.length
+    ? Math.round(
+        (calItems.reduce(
+          (s, d) => s + (1 - Math.abs(parseInt(d.valA as string) - parseInt(d.valB as string)) / 4),
+          0
+        ) /
+          calItems.length) *
+          100
+      )
+    : null;
 
   const allRevealed = revealedCount >= questions.length;
 
@@ -238,6 +254,14 @@ export default function ComparisonView({
                 </p>
               </div>
               <p className={`text-lg font-semibold ${matchLabel.color}`}>{matchLabel.text}</p>
+
+              {compatPercent !== null && (
+                <div className="rounded-xl border-2 border-pink-200 bg-pink-50/50 p-4 mt-2">
+                  <p className="text-3xl font-bold text-pink-600">{compatPercent}%</p>
+                  <p className="text-sm font-semibold text-pink-700">{t('sexCompatTitle')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('sexCompatDesc')}</p>
+                </div>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <Button className="flex-1 h-12 text-base shadow-lg" onClick={handleNextSession} disabled={generating}>

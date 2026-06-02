@@ -38,6 +38,8 @@ Run the SQL migrations in the Supabase SQL editor, in order:
 4. `supabase/migrations/20260601_auth_and_entitlements.sql` — auth link, entitlements, paywall RPC
 5. `supabase/migrations/20260601_enable_rls.sql` — enable Row Level Security (defense-in-depth)
 6. `supabase/migrations/20260601_harden_grants.sql` — drop stale RPC overloads, lock function EXECUTE / table grants to the service role
+7. `supabase/migrations/20260602_intensity_themes.sql` — tier_2 intensity/theme columns, calibration questions, first-pass tagging
+8. `supabase/migrations/20260602_session_intensity_rpc.sql` — create_next_session with intensity/theme filter + calibration prelude
 
 Then configure:
 

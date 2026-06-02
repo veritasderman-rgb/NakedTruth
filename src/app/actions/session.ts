@@ -17,7 +17,13 @@ async function getBaseUrl() {
   return `${protocol}://${host}`;
 }
 
-export async function startSession(email?: string, questionCount: number = 10, tierPref: string = 'vanilla') {
+export async function startSession(
+  email?: string,
+  questionCount: number = 10,
+  tierPref: string = 'vanilla',
+  maxIntensity: number = 3,
+  themes?: string[]
+) {
   const supabase = getSupabaseAdmin();
   const locale = await getLocale();
   const normalizedEmail = email?.toLowerCase().trim();
@@ -87,7 +93,7 @@ export async function startSession(email?: string, questionCount: number = 10, t
     });
   }
 
-  const sessionId = await createSessionOrPaywall(coupleId, activeUser!.id, activeUser!.id, questionCount, tierPref);
+  const sessionId = await createSessionOrPaywall(coupleId, activeUser!.id, activeUser!.id, questionCount, tierPref, maxIntensity, themes);
 
   const { data: session } = await supabase
     .from('sessions')
@@ -107,7 +113,9 @@ async function createSessionOrPaywall(
   createdBy: string,
   partnerA: string,
   questionCount: number,
-  tierPref: string
+  tierPref: string,
+  maxIntensity: number = 3,
+  themes?: string[]
 ): Promise<string> {
   const supabase = getSupabaseAdmin();
   const { data: sessionId, error: rpcError } = await supabase.rpc('create_next_session', {
@@ -117,6 +125,8 @@ async function createSessionOrPaywall(
     p_question_count: questionCount,
     p_tier_pref: tierPref,
     p_user_id: partnerA,
+    p_max_intensity: maxIntensity,
+    p_themes: themes && themes.length > 0 ? themes : null,
   });
 
   if (rpcError) {
@@ -272,20 +282,21 @@ export async function generateNextSession(coupleId: string, userId: string, ques
   const supabase = getSupabaseAdmin();
   const locale = await getLocale();
 
-  if (!questionCount || !tierPref) {
-    const { data: lastSession } = await supabase
-      .from('sessions')
-      .select('question_count, tier_pref')
-      .eq('couple_id', coupleId)
-      .order('session_number', { ascending: false })
-      .limit(1)
-      .single();
+  // Inherit the previous round's config (incl. spice intensity/themes).
+  const { data: lastSession } = await supabase
+    .from('sessions')
+    .select('question_count, tier_pref, max_intensity, themes')
+    .eq('couple_id', coupleId)
+    .order('session_number', { ascending: false })
+    .limit(1)
+    .single();
 
-    questionCount = questionCount || lastSession?.question_count || 10;
-    tierPref = tierPref || lastSession?.tier_pref || 'vanilla';
-  }
+  questionCount = questionCount || lastSession?.question_count || 10;
+  tierPref = tierPref || lastSession?.tier_pref || 'vanilla';
+  const maxIntensity = lastSession?.max_intensity ?? 3;
+  const themes: string[] | undefined = lastSession?.themes ?? undefined;
 
-  const sessionId = await createSessionOrPaywall(coupleId, userId, userId, questionCount ?? 10, tierPref ?? 'vanilla');
+  const sessionId = await createSessionOrPaywall(coupleId, userId, userId, questionCount ?? 10, tierPref ?? 'vanilla', maxIntensity, themes);
 
   const { data: session } = await supabase
     .from('sessions')

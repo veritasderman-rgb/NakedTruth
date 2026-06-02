@@ -8,6 +8,9 @@ export type LocalizedQuestion = {
   prompt: string;
   scaleLow: string | null;
   scaleHigh: string | null;
+  theme: string | null;
+  intensity: number | null;
+  isCalibration: boolean;
 };
 
 type RawQuestion = {
@@ -15,6 +18,9 @@ type RawQuestion = {
   kind: LocalizedQuestion['kind'];
   tier: LocalizedQuestion['tier'];
   prompt: string;
+  theme?: string | null;
+  intensity?: number | null;
+  is_calibration?: boolean | null;
 };
 
 // Resolves prompts + scale labels for the requested locale, falling back to the
@@ -53,6 +59,9 @@ export async function localizeQuestions(
       prompt: chosen?.prompt ?? q.prompt,
       scaleLow: chosen?.scale_low ?? null,
       scaleHigh: chosen?.scale_high ?? null,
+      theme: q.theme ?? null,
+      intensity: q.intensity ?? null,
+      isCalibration: !!q.is_calibration,
     };
   });
 }

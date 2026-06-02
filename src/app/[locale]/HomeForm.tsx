@@ -15,6 +15,7 @@ type TierPref = 'vanilla' | 'spicy' | 'mixed';
 
 const QUESTION_COUNTS = [5, 10, 20, 40] as const;
 const TIER_VALUES: TierPref[] = ['vanilla', 'spicy', 'mixed'];
+const THEME_KEYS = ['explicit', 'bdsm', 'fantasy', 'compat'] as const;
 
 export default function HomeForm({ isConfigured, missingVars }: { isConfigured: boolean, missingVars: string[] }) {
   const t = useTranslations('home');
@@ -24,6 +25,8 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
   const [error, setError] = useState<string | null>(null);
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [tierPref, setTierPref] = useState<TierPref>('vanilla');
+  const [maxIntensity, setMaxIntensity] = useState<number>(2);
+  const [themes, setThemes] = useState<string[]>([...THEME_KEYS]);
   const [pendingStart, setPendingStart] = useState<{ email?: string } | null>(null);
 
   const tierLabels: Record<TierPref, { label: string; desc: string }> = {
@@ -38,8 +41,9 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
     setLoading(true);
     setError(null);
     try {
-      track('config_selected', { tier: tierPref, count: questionCount, withEmail: !!emailToUse });
-      await startSession(emailToUse, questionCount, tierPref);
+      const themesToSend = requiresAge && themes.length > 0 ? themes : undefined;
+      track('config_selected', { tier: tierPref, count: questionCount, withEmail: !!emailToUse, intensity: requiresAge ? maxIntensity : undefined });
+      await startSession(emailToUse, questionCount, tierPref, requiresAge ? maxIntensity : 3, themesToSend);
     } catch (err: any) {
       // Next.js redirect throws — let it bubble.
       if (err?.digest?.startsWith?.('NEXT_REDIRECT')) throw err;
@@ -130,6 +134,54 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
             <p className="text-[10px] text-muted-foreground ml-1">{t('ageNotice')}</p>
           )}
         </div>
+
+        {/* Spice configurator — only for tier_2 (spicy/mixed) */}
+        {requiresAge && (
+          <div className="space-y-4 rounded-xl border-2 border-amber-200 bg-amber-50/40 p-3">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground ml-1">{t('intensityQuestion')}</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((lvl) => (
+                  <button
+                    key={lvl}
+                    type="button"
+                    onClick={() => setMaxIntensity(lvl)}
+                    className={`rounded-lg border-2 py-2 text-xs font-semibold transition-all ${
+                      maxIntensity === lvl
+                        ? 'border-amber-500 bg-amber-100 text-amber-800'
+                        : 'border-muted text-muted-foreground hover:border-amber-300'
+                    }`}
+                  >
+                    {t(`intensity${lvl}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground ml-1">{t('themesQuestion')}</label>
+              <div className="grid grid-cols-2 gap-2">
+                {THEME_KEYS.map((key) => {
+                  const active = themes.includes(key);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setThemes(active ? themes.filter((x) => x !== key) : [...themes, key])}
+                      className={`rounded-lg border-2 px-2 py-2 text-xs font-medium text-left transition-all ${
+                        active
+                          ? 'border-amber-500 bg-amber-100 text-amber-800'
+                          : 'border-muted text-muted-foreground hover:border-amber-300'
+                      }`}
+                    >
+                      {t(`theme_${key}`)}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-muted-foreground ml-1">{t('themesHint')}</p>
+            </div>
+          </div>
+        )}
 
         {/* Question count */}
         <div className="space-y-3">
