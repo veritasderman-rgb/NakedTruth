@@ -17,6 +17,7 @@ export default function InvitePartner({ sessionId, session, role, tokenB }: { se
   const [loading, setLoading] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [canShare, setCanShare] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<null | { ok: boolean; detail?: string }>(null);
 
   const inviteLink = typeof window !== 'undefined'
     ? `${window.location.origin}/${locale}/session/${sessionId}?token=${tokenB}`
@@ -31,12 +32,20 @@ export default function InvitePartner({ sessionId, session, role, tokenB }: { se
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setEmailStatus(null);
     try {
-      await invitePartner(sessionId, email);
-      track('invite_sent', { channel: 'email' });
-      setEmail("");
+      const res = await invitePartner(sessionId, email);
+      if (res.emailSent) {
+        track('invite_sent', { channel: 'email' });
+        setEmailStatus({ ok: true });
+        setEmail("");
+      } else {
+        // Email failed — keep the address and tell the user to use the link instead.
+        setEmailStatus({ ok: false, detail: res.emailError });
+      }
     } catch (error) {
       console.error(error);
+      setEmailStatus({ ok: false });
     } finally {
       setLoading(false);
     }
@@ -150,6 +159,12 @@ export default function InvitePartner({ sessionId, session, role, tokenB }: { se
             <Button type="submit" variant="secondary" className="w-full" disabled={loading || !email}>
               {loading ? t('sending') : t('sendInvite')}
             </Button>
+            {emailStatus?.ok && (
+              <p className="text-xs text-green-600 text-center">{t('emailSentOk')}</p>
+            )}
+            {emailStatus && !emailStatus.ok && (
+              <p className="text-xs text-amber-600 text-center">{t('emailFailed')}</p>
+            )}
           </form>
         </CardContent>
       </Card>

@@ -71,6 +71,8 @@
     "emailPlaceholder": "Partnerův e-mail",
     "sendInvite": "Poslat pozvánku",
     "sending": "Odesílám...",
+    "emailSentOk": "Pozvánka odeslána. ✅",
+    "emailFailed": "E-mail se teď nepodařilo odeslat. Použij prosím odkaz nebo WhatsApp výše — fungují vždy.",
     "waitingForPartner": "Čekáme, až se partner připojí...",
     "waitingForCompletion": "Čekáme na dokončení partnerem...",
     "whatsappText": "Pozvi se do NakedTruth a odpověz na stejné otázky jako já. Výsledky uvidíme až oba dokončíme: {link}",

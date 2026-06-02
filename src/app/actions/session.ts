@@ -261,10 +261,11 @@ export async function invitePartner(sessionId: string, partnerBEmail?: string) {
   const inviteLink = `${baseUrl}/${locale}/session/${sessionId}?token=${session.partner_b_access_token}`;
 
   if (normalizedEmail) {
-    await sendInviteEmail(normalizedEmail, inviteLink, locale);
+    const result = await sendInviteEmail(normalizedEmail, inviteLink, locale);
+    return { success: true, inviteLink, emailSent: result.ok, emailError: result.ok ? undefined : result.error };
   }
 
-  return { success: true, inviteLink };
+  return { success: true, inviteLink, emailSent: false, emailError: undefined as string | undefined };
 }
 
 export async function generateNextSession(coupleId: string, userId: string, questionCount?: number, tierPref?: string) {
