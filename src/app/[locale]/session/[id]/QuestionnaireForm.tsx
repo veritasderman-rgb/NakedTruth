@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AgeGate, hasAgeConsent } from "@/components/AgeGate";
 import { saveAnswer, completeRound } from "@/app/actions/session";
 import { track } from "@/lib/analytics";
 import type { LocalizedQuestion } from "@/lib/questions";
@@ -123,6 +124,21 @@ export default function QuestionnaireForm({
   const handleBack = () => {
     if (currentIndex > 0) goTo(currentIndex - 1);
   };
+
+  // 18+ gate for the answering partner: only when this round contains tier_2
+  // (adult) content, and only if not already confirmed. tier_1 rounds skip it.
+  const needsAge = useMemo(() => questions.some((q) => q.tier === 'tier_2'), [questions]);
+  const [ageChecked, setAgeChecked] = useState(false);
+  const [ageOk, setAgeOk] = useState(false);
+  useEffect(() => {
+    setAgeOk(!needsAge || hasAgeConsent());
+    setAgeChecked(true);
+  }, [needsAge]);
+
+  if (needsAge && !ageOk) {
+    if (!ageChecked) return null; // avoid flashing adult content before the check
+    return <AgeGate onConfirm={() => setAgeOk(true)} onCancel={() => router.push('/')} />;
+  }
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12">
