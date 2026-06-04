@@ -9,6 +9,9 @@ type TierPref = 'vanilla' | 'spicy' | 'mixed';
 
 const QUESTION_COUNTS = [5, 10, 20, 40] as const;
 const PREMIUM_PRICE_CZK = 29;
+// Premium packs are curated finite sets; request the whole pack and let the DB
+// clamp + record the actual count.
+const FULL_PACK_COUNT = 100;
 
 const TIER_OPTIONS: { value: TierPref; label: string; desc: string }[] = [
   { value: 'vanilla', label: 'Vztahy & soužití', desc: 'Každodenní život, komunikace, hodnoty a plány do budoucna' },
@@ -81,7 +84,9 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
     setError(null);
     try {
       const result = await startSession(
-        emailToUse, questionCount, tierPref, maxIntensity, themes, selectedPack ?? undefined
+        emailToUse,
+        premiumMode ? FULL_PACK_COUNT : questionCount,
+        tierPref, maxIntensity, themes, selectedPack ?? undefined
       );
       // On success startSession redirects; only a paywall signal returns here.
       if (result?.paywall) {
@@ -277,29 +282,31 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
           )}
         </div>
 
-        {/* Question count */}
-        <div className="space-y-3">
-          <label className="text-xs font-medium text-muted-foreground ml-1">Kolik otázek?</label>
-          <div className="grid grid-cols-4 gap-2">
-            {QUESTION_COUNTS.map((count) => (
-              <button
-                key={count}
-                type="button"
-                onClick={() => setQuestionCount(count)}
-                className={`rounded-xl border-2 py-3 text-center font-semibold transition-all ${
-                  questionCount === count
-                    ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                    : 'border-muted text-muted-foreground hover:border-muted-foreground/30'
-                }`}
-              >
-                {count}
-              </button>
-            ))}
+        {/* Question count — packs use their whole curated set, so hide this */}
+        {!premiumMode && (
+          <div className="space-y-3">
+            <label className="text-xs font-medium text-muted-foreground ml-1">Kolik otázek?</label>
+            <div className="grid grid-cols-4 gap-2">
+              {QUESTION_COUNTS.map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => setQuestionCount(count)}
+                  className={`rounded-xl border-2 py-3 text-center font-semibold transition-all ${
+                    questionCount === count
+                      ? 'border-primary bg-primary/5 text-primary shadow-sm'
+                      : 'border-muted text-muted-foreground hover:border-muted-foreground/30'
+                  }`}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">
+              {questionCount <= 10 ? 'Rychlá ochutnávka' : questionCount === 20 ? 'Ideální porce' : 'Pro ty, co se nebojí jít do hloubky'}
+            </p>
           </div>
-          <p className="text-[10px] text-muted-foreground text-center">
-            {questionCount <= 10 ? 'Rychlá ochutnávka' : questionCount === 20 ? 'Ideální porce' : 'Pro ty, co se nebojí jít do hloubky'}
-          </p>
-        </div>
+        )}
 
         {/* Paywall card — shown when a premium pack is chosen but not yet unlocked */}
         {paywall ? (

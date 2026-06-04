@@ -191,17 +191,13 @@ begin
   )
   returning id into v_session_id;
 
-  with used_questions as (
-    select distinct sq.question_id
-    from public.session_questions sq
-    join public.sessions s on s.id = sq.session_id
-    where s.couple_id = p_couple_id
-  ),
-  pick as (
+  -- Packs are small, curated and replayable: take the whole pack (clamped by
+  -- p_question_count) and do NOT exclude previously-used questions, so a couple
+  -- can replay the same pack in full.
+  with pick as (
     select q.id as question_id
     from public.questions q
     where q.is_active = true and q.pack = p_pack and q.is_calibration = false
-      and not exists (select 1 from used_questions uq where uq.question_id = q.id)
     order by random() limit p_question_count
   ),
   ordered as (
@@ -211,6 +207,12 @@ begin
   insert into public.session_questions (session_id, question_id, question_order)
   select v_session_id, o.question_id, o.question_order
   from ordered o;
+
+  -- A pack may have fewer questions than requested; keep the stored count in
+  -- sync with what was actually inserted.
+  update public.sessions
+    set question_count = (select count(*) from public.session_questions where session_id = v_session_id)
+    where id = v_session_id;
 
   return v_session_id;
 end;
