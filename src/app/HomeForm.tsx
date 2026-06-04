@@ -15,18 +15,44 @@ const TIER_OPTIONS: { value: TierPref; label: string; desc: string }[] = [
   { value: 'mixed', label: 'Namixuj obojí', desc: 'Půlka vztahových, půlka pikantních — nejlepší z obou světů' },
 ];
 
+// Intensity ceiling for tier_2 (spicy/mixed) questions. Matches the
+// `intensity` column on questions (1–3) and the RPC's p_max_intensity.
+const INTENSITY_LEVELS: { value: number; label: string; desc: string }[] = [
+  { value: 1, label: 'Jemné', desc: 'Spíš náznaky a otevřená komunikace' },
+  { value: 2, label: 'Odvážné', desc: 'Konkrétnější touhy a fantazie' },
+  { value: 3, label: 'Bez hranic', desc: 'Naplno a bez filtrů' },
+];
+
+// Optional theme filter for tier_2 questions. Empty selection = all themes.
+// Values match the `theme` column on questions and the RPC's p_themes.
+const THEME_OPTIONS: { value: string; label: string; desc: string }[] = [
+  { value: 'explicit', label: 'Bez obalu', desc: 'Přímé otázky o sexu a touhách' },
+  { value: 'fantasy', label: 'Fantazie', desc: 'Tajné představy a zkušenosti' },
+  { value: 'bdsm', label: 'Dominance & submise', desc: 'Moc, hranice, role' },
+  { value: 'compat', label: 'Sladění', desc: 'Jak vám to spolu sedí' },
+];
+
 export default function HomeForm({ isConfigured, missingVars }: { isConfigured: boolean, missingVars: string[] }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [questionCount, setQuestionCount] = useState<number>(20);
   const [tierPref, setTierPref] = useState<TierPref>('vanilla');
+  const [maxIntensity, setMaxIntensity] = useState<number>(3);
+  const [themes, setThemes] = useState<string[]>([]); // empty = all themes
+
+  const showSpiceControls = tierPref !== 'vanilla';
+
+  const toggleTheme = (value: string) =>
+    setThemes((prev) =>
+      prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]
+    );
 
   const handleStart = async (emailToUse?: string) => {
     setLoading(true);
     setError(null);
     try {
-      await startSession(emailToUse, questionCount, tierPref);
+      await startSession(emailToUse, questionCount, tierPref, maxIntensity, themes);
     } catch (err: any) {
       console.error("Failed to start session:", err);
       setError(err.message || "Něco se nepovedlo. Zkontrolujte připojení k databázi.");
@@ -81,6 +107,64 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
             ))}
           </div>
         </div>
+
+        {/* Spice controls — only relevant when tier_2 questions are involved */}
+        {showSpiceControls && (
+          <div className="space-y-6 rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
+            {/* Intensity ceiling */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground ml-1">Jak ostré to má být?</label>
+              <div className="grid grid-cols-3 gap-2">
+                {INTENSITY_LEVELS.map((lvl) => (
+                  <button
+                    key={lvl.value}
+                    type="button"
+                    aria-pressed={maxIntensity === lvl.value}
+                    onClick={() => setMaxIntensity(lvl.value)}
+                    className={`rounded-xl border-2 py-2.5 text-center text-sm font-semibold transition-all ${
+                      maxIntensity === lvl.value
+                        ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                        : 'border-muted text-muted-foreground hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    {lvl.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center">
+                {INTENSITY_LEVELS.find((l) => l.value === maxIntensity)?.desc}
+              </p>
+            </div>
+
+            {/* Theme filter */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground ml-1">
+                Témata <span className="font-normal opacity-70">(nepovinné — nic = vše)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {THEME_OPTIONS.map((t) => {
+                  const active = themes.includes(t.value);
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => toggleTheme(t.value)}
+                      className={`rounded-xl border-2 p-2.5 text-left transition-all ${
+                        active
+                          ? 'border-primary bg-primary/10 shadow-sm'
+                          : 'border-muted hover:border-muted-foreground/30'
+                      }`}
+                    >
+                      <span className={`block text-sm font-semibold ${active ? 'text-primary' : ''}`}>{t.label}</span>
+                      <span className="block text-[10px] text-muted-foreground leading-snug mt-0.5">{t.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Question count */}
         <div className="space-y-3">

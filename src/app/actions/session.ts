@@ -14,7 +14,13 @@ async function getBaseUrl() {
   return `${protocol}://${host}`;
 }
 
-export async function startSession(email?: string, questionCount: number = 20, tierPref: string = 'vanilla') {
+export async function startSession(
+  email?: string,
+  questionCount: number = 20,
+  tierPref: string = 'vanilla',
+  maxIntensity: number = 3,
+  themes: string[] = []
+) {
   const supabase = getSupabaseAdmin();
   const normalizedEmail = email?.toLowerCase().trim();
 
@@ -85,13 +91,18 @@ export async function startSession(email?: string, questionCount: number = 20, t
     });
   }
 
-  // 3. Create next session using RPC
+  // 3. Create next session using RPC.
+  // tier_2 (spicy/mixed) sessions also carry an intensity ceiling and optional
+  // theme filter; an empty themes selection means "all themes" (null).
   const { data: sessionId, error: rpcError } = await supabase.rpc('create_next_session', {
     p_couple_id: coupleId,
     p_created_by_user_id: activeUser!.id,
     p_partner_a_user_id: activeUser!.id,
     p_question_count: questionCount,
-    p_tier_pref: tierPref
+    p_tier_pref: tierPref,
+    p_user_id: activeUser!.id,
+    p_max_intensity: maxIntensity,
+    p_themes: themes.length > 0 ? themes : null
   });
 
   if (rpcError) throw rpcError;
@@ -246,26 +257,33 @@ export async function invitePartner(sessionId: string, partnerBEmail?: string) {
 export async function generateNextSession(coupleId: string, userId: string, questionCount?: number, tierPref?: string) {
   const supabase = getSupabaseAdmin();
 
-  // If no preferences passed, inherit from the latest session of this couple
-  if (!questionCount || !tierPref) {
-    const { data: lastSession } = await supabase
-      .from('sessions')
-      .select('question_count, tier_pref')
-      .eq('couple_id', coupleId)
-      .order('session_number', { ascending: false })
-      .limit(1)
-      .single();
+  // Inherit intensity/theme preferences from the couple's latest session so a
+  // repeat round keeps the same spice settings the pair originally chose.
+  let maxIntensity = 3;
+  let themes: string[] | null = null;
 
-    questionCount = questionCount || lastSession?.question_count || 20;
-    tierPref = tierPref || lastSession?.tier_pref || 'vanilla';
-  }
+  const { data: lastSession } = await supabase
+    .from('sessions')
+    .select('question_count, tier_pref, max_intensity, themes')
+    .eq('couple_id', coupleId)
+    .order('session_number', { ascending: false })
+    .limit(1)
+    .single();
+
+  questionCount = questionCount || lastSession?.question_count || 20;
+  tierPref = tierPref || lastSession?.tier_pref || 'vanilla';
+  if (lastSession?.max_intensity) maxIntensity = lastSession.max_intensity;
+  if (lastSession?.themes && lastSession.themes.length > 0) themes = lastSession.themes;
 
   const { data: sessionId, error: rpcError } = await supabase.rpc('create_next_session', {
     p_couple_id: coupleId,
     p_created_by_user_id: userId,
     p_partner_a_user_id: userId,
     p_question_count: questionCount,
-    p_tier_pref: tierPref
+    p_tier_pref: tierPref,
+    p_user_id: userId,
+    p_max_intensity: maxIntensity,
+    p_themes: themes
   });
 
   if (rpcError) throw rpcError;
