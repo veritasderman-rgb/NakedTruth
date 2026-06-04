@@ -14,13 +14,28 @@ async function getBaseUrl() {
   return `${protocol}://${host}`;
 }
 
+// True if the user holds a non-expired 'premium' entitlement.
+async function userHasPremium(supabase: ReturnType<typeof getSupabaseAdmin>, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('entitlements')
+    .select('expires_at')
+    .eq('user_id', userId)
+    .eq('product_code', 'premium');
+  return (data ?? []).some((e) => !e.expires_at || new Date(e.expires_at) > new Date());
+}
+
+// Returned (instead of redirecting) when a premium pack is requested but the
+// user hasn't unlocked premium yet, so the UI can open the paywall.
+export type StartSessionResult = { paywall: true; userId: string } | undefined;
+
 export async function startSession(
   email?: string,
   questionCount: number = 20,
   tierPref: string = 'vanilla',
   maxIntensity: number = 3,
-  themes: string[] = []
-) {
+  themes: string[] = [],
+  pack?: string
+): Promise<StartSessionResult> {
   const supabase = getSupabaseAdmin();
   const normalizedEmail = email?.toLowerCase().trim();
 
@@ -62,6 +77,13 @@ export async function startSession(
     activeUser = newUser;
   }
 
+  // Premium gate: a pack session requires the 'premium' entitlement. Check before
+  // creating a couple/session so a non-paying attempt leaves no junk; the UI gets
+  // a paywall signal instead of an error (the RPC also enforces this server-side).
+  if (pack && !(await userHasPremium(supabase, activeUser!.id))) {
+    return { paywall: true, userId: activeUser!.id };
+  }
+
   // 2. Check if user is already in a couple, otherwise create a standalone couple for now
   // In this simplified flow, User A starts, then later invites User B.
   const { data: member } = await supabase
@@ -91,19 +113,27 @@ export async function startSession(
     });
   }
 
-  // 3. Create next session using RPC.
-  // tier_2 (spicy/mixed) sessions also carry an intensity ceiling and optional
-  // theme filter; an empty themes selection means "all themes" (null).
-  const { data: sessionId, error: rpcError } = await supabase.rpc('create_next_session', {
-    p_couple_id: coupleId,
-    p_created_by_user_id: activeUser!.id,
-    p_partner_a_user_id: activeUser!.id,
-    p_question_count: questionCount,
-    p_tier_pref: tierPref,
-    p_user_id: activeUser!.id,
-    p_max_intensity: maxIntensity,
-    p_themes: themes.length > 0 ? themes : null
-  });
+  // 3. Create the session via RPC. Premium packs use create_pack_session (gated);
+  // everything else uses create_next_session with the tier/intensity/theme prefs.
+  const { data: sessionId, error: rpcError } = pack
+    ? await supabase.rpc('create_pack_session', {
+        p_couple_id: coupleId,
+        p_created_by_user_id: activeUser!.id,
+        p_partner_a_user_id: activeUser!.id,
+        p_question_count: questionCount,
+        p_pack: pack,
+        p_user_id: activeUser!.id,
+      })
+    : await supabase.rpc('create_next_session', {
+        p_couple_id: coupleId,
+        p_created_by_user_id: activeUser!.id,
+        p_partner_a_user_id: activeUser!.id,
+        p_question_count: questionCount,
+        p_tier_pref: tierPref,
+        p_user_id: activeUser!.id,
+        p_max_intensity: maxIntensity,
+        p_themes: themes.length > 0 ? themes : null,
+      });
 
   if (rpcError) throw rpcError;
 
