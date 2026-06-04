@@ -1,7 +1,7 @@
 'use server';
 
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { sendInviteEmail } from '@/lib/mail';
+import { sendInviteEmail, sendResultsReadyEmail } from '@/lib/mail';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 
@@ -178,7 +178,41 @@ export async function submitAnswers(sessionId: string, userId: string, answers: 
 
   if (completeError) throw completeError;
 
+  // If this submission completed the session, email both partners (once).
+  await maybeSendResultsEmail(supabase, sessionId);
+
   return { success: true };
+}
+
+// Sends the "results are ready" email to both partners exactly once. The send is
+// claimed atomically via a conditional update so concurrent final submits can't
+// double-email; if the session isn't completed yet (or was already emailed) this
+// is a no-op.
+async function maybeSendResultsEmail(supabase: ReturnType<typeof getSupabaseAdmin>, sessionId: string) {
+  const { data: claimed } = await supabase
+    .from('sessions')
+    .update({ results_email_sent_at: new Date().toISOString() })
+    .eq('id', sessionId)
+    .eq('status', 'completed')
+    .is('results_email_sent_at', null)
+    .select('partner_a_user_id, partner_b_user_id, partner_a_access_token, partner_b_access_token')
+    .maybeSingle();
+
+  if (!claimed) return;
+
+  const baseUrl = await getBaseUrl();
+  const recipients = [
+    { userId: claimed.partner_a_user_id, token: claimed.partner_a_access_token },
+    { userId: claimed.partner_b_user_id, token: claimed.partner_b_access_token },
+  ];
+
+  for (const r of recipients) {
+    if (!r.userId) continue;
+    const { data: u } = await supabase.from('users').select('email').eq('id', r.userId).single();
+    if (u?.email) {
+      await sendResultsReadyEmail(u.email, `${baseUrl}/session/${sessionId}?token=${r.token}`);
+    }
+  }
 }
 
 export async function invitePartner(sessionId: string, partnerBEmail?: string) {
