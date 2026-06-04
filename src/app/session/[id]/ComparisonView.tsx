@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { generateNextSession } from "../../actions/session";
+import { computeScore, matchLabel } from "@/lib/scoring";
 import { ChevronRight, BarChart3, Share2 } from "lucide-react";
 
 function parseScaleLabels(prompt: string): { low: string; high: string; cleanPrompt: string } {
@@ -30,13 +31,6 @@ function formatValue(val: any, kind: string, labels?: { low: string; high: strin
   return val;
 }
 
-function getMatchLabel(percent: number): { text: string; color: string } {
-  if (percent >= 80) return { text: 'Jste na stejné vlně', color: 'text-green-600' };
-  if (percent >= 60) return { text: 'Solidní základ, je na čem stavět', color: 'text-emerald-600' };
-  if (percent >= 40) return { text: 'Máte o čem mluvit', color: 'text-amber-600' };
-  return { text: 'Překvapení čeká — na to se podívejte', color: 'text-orange-600' };
-}
-
 export default function ComparisonView({ session, questions, answers, myUserId }: { session: any, questions: any[], answers: any[], myUserId: string }) {
   const [generating, setGenerating] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
@@ -58,10 +52,13 @@ export default function ComparisonView({ session, questions, answers, myUserId }
     return { question, valA, valB, isMatch, labels, displayPrompt };
   });
 
-  const comparableQuestions = questionData.filter(q => q.question.kind !== 'short_answer');
-  const matchCount = comparableQuestions.filter(q => q.isMatch).length;
-  const matchPercent = comparableQuestions.length > 0 ? Math.round((matchCount / comparableQuestions.length) * 100) : 0;
-  const matchLabel = getMatchLabel(matchPercent);
+  // Headline + per-category stats from the shared scoring module so the
+  // comparison view, share page and OG image always agree.
+  const score = computeScore(questions.map((q: any) => q.questions), answers, partnerAId, partnerBId);
+  const matchPercent = score.percent;
+  const matchCount = score.matchCount;
+  const comparableTotal = score.total;
+  const label = matchLabel(matchPercent);
 
   const allRevealed = revealedCount >= questions.length;
 
@@ -94,8 +91,11 @@ export default function ComparisonView({ session, questions, answers, myUserId }
   };
 
   const handleShare = async () => {
-    const text = `NakedTruth: Naše shoda je ${matchPercent}% — ${matchLabel.text}! Zkuste to taky:`;
-    const url = typeof window !== 'undefined' ? window.location.origin : '';
+    const text = `NakedTruth: Naše shoda je ${matchPercent}% — ${label.text}! Zkuste to taky:`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    // Share the privacy-safe results landing (aggregate numbers only, no answers)
+    // so the link renders a tempting OG card and funnels viewers into their own quiz.
+    const url = `${origin}/share?p=${matchPercent}&m=${matchCount}&t=${comparableTotal}`;
 
     if (navigator.share) {
       try {
@@ -206,12 +206,29 @@ export default function ComparisonView({ session, questions, answers, myUserId }
               <div>
                 <p className="text-5xl font-bold text-primary">{matchPercent}%</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Shoda v {matchCount} z {comparableQuestions.length} otázek
+                  Shoda v {matchCount} z {comparableTotal} otázek
                 </p>
               </div>
-              <p className={`text-lg font-semibold ${matchLabel.color}`}>
-                {matchLabel.text}
+              <p className="text-lg font-semibold" style={{ color: label.color }}>
+                {label.text}
               </p>
+
+              {/* Per-category breakdown */}
+              {score.categories.length > 1 && (
+                <div className="space-y-2 pt-2 text-left">
+                  {score.categories.map((cat) => (
+                    <div key={cat.key} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-foreground/80">{cat.label}</span>
+                        <span className="text-muted-foreground">
+                          {cat.percent}% · {cat.matchCount}/{cat.total}
+                        </span>
+                      </div>
+                      <Progress value={cat.percent} className="h-1.5" />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <Button
