@@ -5,44 +5,59 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { startSession } from "./actions/session";
 
+import { fmt, type Locale } from "@/lib/i18n";
+import type { QuizContent } from "@/lib/quiz-content";
+
 type TierPref = 'vanilla' | 'spicy' | 'mixed';
 
 const QUESTION_COUNTS = [5, 10, 20, 40] as const;
-const PREMIUM_PRICE_CZK = 29;
 // Premium packs are curated finite sets; request the whole pack and let the DB
 // clamp + record the actual count.
 const FULL_PACK_COUNT = 100;
 
-const TIER_OPTIONS: { value: TierPref; label: string; desc: string }[] = [
-  { value: 'vanilla', label: 'Vztahy & soužití', desc: 'Každodenní život, komunikace, hodnoty a plány do budoucna' },
-  { value: 'spicy', label: 'Pod peřinou', desc: 'Intimita, touhy, fantazie a vše, co se normálně neřekne nahlas' },
-  { value: 'mixed', label: 'Namixuj obojí', desc: 'Půlka vztahových, půlka pikantních — nejlepší z obou světů' },
-];
+export default function HomeForm({
+  isConfigured,
+  missingVars,
+  locale,
+  t,
+  premiumPrice,
+}: {
+  isConfigured: boolean;
+  missingVars: string[];
+  locale: Locale;
+  t: QuizContent;
+  // Formatted one-time premium price for this locale, e.g. "29 Kč".
+  premiumPrice: string;
+}) {
+  const TIER_OPTIONS: { value: TierPref; label: string; desc: string }[] = [
+    { value: 'vanilla', label: t.tierVanilla, desc: t.tierVanillaDesc },
+    { value: 'spicy', label: t.tierSpicy, desc: t.tierSpicyDesc },
+    { value: 'mixed', label: t.tierMixed, desc: t.tierMixedDesc },
+  ];
 
-// Intensity ceiling for tier_2 (spicy/mixed) questions. Matches the
-// `intensity` column on questions (1–3) and the RPC's p_max_intensity.
-const INTENSITY_LEVELS: { value: number; label: string; desc: string }[] = [
-  { value: 1, label: 'Jemné', desc: 'Spíš náznaky a otevřená komunikace' },
-  { value: 2, label: 'Odvážné', desc: 'Konkrétnější touhy a fantazie' },
-  { value: 3, label: 'Bez hranic', desc: 'Naplno a bez filtrů' },
-];
+  // Intensity ceiling for tier_2 (spicy/mixed) questions. Matches the
+  // `intensity` column on questions (1–3).
+  const INTENSITY_LEVELS: { value: number; label: string; desc: string }[] = [
+    { value: 1, label: t.int1, desc: t.int1Desc },
+    { value: 2, label: t.int2, desc: t.int2Desc },
+    { value: 3, label: t.int3, desc: t.int3Desc },
+  ];
 
-// Optional theme filter for tier_2 questions. Empty selection = all themes.
-// Values match the `theme` column on questions and the RPC's p_themes.
-const THEME_OPTIONS: { value: string; label: string; desc: string }[] = [
-  { value: 'explicit', label: 'Bez obalu', desc: 'Přímé otázky o sexu a touhách' },
-  { value: 'fantasy', label: 'Fantazie', desc: 'Tajné představy a zkušenosti' },
-  { value: 'bdsm', label: 'Dominance & submise', desc: 'Moc, hranice, role' },
-  { value: 'compat', label: 'Sladění', desc: 'Jak vám to spolu sedí' },
-];
+  // Optional theme filter for tier_2 questions. Empty selection = all themes.
+  // Values match the `theme` column on questions.
+  const THEME_OPTIONS: { value: string; label: string; desc: string }[] = [
+    { value: 'explicit', label: t.themeExplicit, desc: t.themeExplicitDesc },
+    { value: 'fantasy', label: t.themeFantasy, desc: t.themeFantasyDesc },
+    { value: 'bdsm', label: t.themeBdsm, desc: t.themeBdsmDesc },
+    { value: 'compat', label: t.themeCompat, desc: t.themeCompatDesc },
+  ];
 
-// Premium thematic packs. `value` matches questions.pack. Unlocked by the
-// one-time premium purchase.
-const PREMIUM_PACKS: { value: string; label: string; desc: string }[] = [
-  { value: 'fantazie_bez_filtru', label: 'Fantazie bez filtrů', desc: 'Nejodvážnější otázky o touhách, fantaziích a hranicích' },
-];
+  // Premium thematic packs. `value` matches questions.pack. Unlocked by the
+  // one-time premium purchase.
+  const PREMIUM_PACKS: { value: string; label: string; desc: string }[] = [
+    { value: 'fantazie_bez_filtru', label: t.packFantasy, desc: t.packFantasyDesc },
+  ];
 
-export default function HomeForm({ isConfigured, missingVars }: { isConfigured: boolean, missingVars: string[] }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +113,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
       if (typeof err?.digest === 'string' && err.digest.startsWith('NEXT_REDIRECT')) throw err;
       if (err?.message === 'NEXT_REDIRECT') throw err;
       console.error("Failed to start session:", err);
-      setError(err.message || "Něco se nepovedlo. Zkontrolujte připojení k databázi.");
+      setError(t.startError);
       setLoading(false);
     }
   };
@@ -110,20 +125,16 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, email }),
+        body: JSON.stringify({ userId, email, locale }),
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
         return;
       }
-      setError(
-        data.error === 'stripe_not_configured'
-          ? 'Platby zatím nejsou nastavené. Zkuste to prosím později.'
-          : 'Platbu se nepodařilo spustit. Zkuste to prosím znovu.'
-      );
+      setError(data.error === 'stripe_not_configured' ? t.payUnavailable : t.payFailed);
     } catch {
-      setError('Platbu se nepodařilo spustit. Zkuste to prosím znovu.');
+      setError(t.payFailed);
     }
     setLoading(false);
   };
@@ -132,22 +143,22 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
     <div className="w-full max-w-sm mx-auto">
       {!isConfigured && (
         <div className="mt-8 rounded-md bg-yellow-500/10 p-4 text-left text-xs text-yellow-200 border border-yellow-500/40">
-          <p className="font-bold text-sm">Chybí konfigurace</p>
+          <p className="font-bold text-sm">{t.cfgMissing}</p>
           <ul className="mt-2 list-disc list-inside space-y-1">
             {missingVars.map(v => <li key={v}>{v}</li>)}
           </ul>
-          <p className="mt-2">Přidejte tyto proměnné do nastavení projektu na Vercelu.</p>
+          <p className="mt-2">{t.cfgMissingHint}</p>
         </div>
       )}
 
       {premiumNotice === 'success' && (
         <div className="mt-8 rounded-md bg-emerald-500/10 p-3 text-sm text-emerald-200 border border-emerald-500/40">
-          Premium odemčeno 🎉 Vyberte balíček a zadejte stejný e-mail, se kterým jste platili.
+          {t.premiumSuccess}
         </div>
       )}
       {premiumNotice === 'cancelled' && (
         <div className="mt-8 rounded-md bg-muted p-3 text-sm text-muted-foreground border">
-          Platba byla zrušena. Můžete to zkusit znovu, kdykoli budete chtít.
+          {t.premiumCancelled}
         </div>
       )}
 
@@ -155,7 +166,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
         {/* Tier preference — hidden in premium mode */}
         {!premiumMode && (
           <div className="space-y-3">
-            <label className="text-xs font-medium text-muted-foreground ml-1">Jaké otázky chcete?</label>
+            <label className="text-xs font-medium text-muted-foreground ml-1">{t.whichQuestions}</label>
             <div className="grid gap-2">
               {TIER_OPTIONS.map((opt) => (
                 <button
@@ -194,7 +205,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
           <div className="space-y-6 rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
             {/* Intensity ceiling */}
             <div className="space-y-3">
-              <label className="text-xs font-medium text-muted-foreground ml-1">Jak ostré to má být?</label>
+              <label className="text-xs font-medium text-muted-foreground ml-1">{t.howSpicy}</label>
               <div className="grid grid-cols-3 gap-2">
                 {INTENSITY_LEVELS.map((lvl) => (
                   <button
@@ -220,7 +231,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
             {/* Theme filter */}
             <div className="space-y-3">
               <label className="text-xs font-medium text-muted-foreground ml-1">
-                Témata <span className="font-normal opacity-70">(nepovinné — nic = vše)</span>
+                {t.themes} <span className="font-normal opacity-70">{t.themesHint}</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {THEME_OPTIONS.map((t) => {
@@ -250,9 +261,9 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
         {/* Premium packs */}
         <div className="space-y-3">
           <label className="text-xs font-medium text-muted-foreground ml-1 flex items-center gap-2">
-            Prémiové balíčky
+            {t.premiumPacks}
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-              {PREMIUM_PRICE_CZK} Kč napořád
+              {fmt(t.priceForever, { price: premiumPrice })}
             </span>
           </label>
           <div className="grid gap-2">
@@ -280,7 +291,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
           </div>
           {premiumMode && (
             <p className="text-[10px] text-muted-foreground ml-1">
-              Jednorázových {PREMIUM_PRICE_CZK} Kč odemkne všechny prémiové balíčky — napořád, pro tebe i partnera. Vyžaduje e-mail.
+              {fmt(t.premiumNote, { price: premiumPrice })}
             </p>
           )}
         </div>
@@ -288,7 +299,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
         {/* Question count — packs use their whole curated set, so hide this */}
         {!premiumMode && (
           <div className="space-y-3">
-            <label className="text-xs font-medium text-muted-foreground ml-1">Kolik otázek?</label>
+            <label className="text-xs font-medium text-muted-foreground ml-1">{t.howMany}</label>
             <div className="grid grid-cols-4 gap-2">
               {QUESTION_COUNTS.map((count) => (
                 <button
@@ -306,7 +317,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
               ))}
             </div>
             <p className="text-[10px] text-muted-foreground text-center">
-              {questionCount <= 10 ? 'Rychlá ochutnávka' : questionCount === 20 ? 'Ideální porce' : 'Pro ty, co se nebojí jít do hloubky'}
+              {questionCount <= 10 ? t.countFew : questionCount === 20 ? t.countMid : t.countMany}
             </p>
           </div>
         )}
@@ -314,12 +325,12 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
         {/* Paywall card — shown when a premium pack is chosen but not yet unlocked */}
         {paywall ? (
           <div className="space-y-3 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 text-center">
-            <p className="text-sm font-semibold">Odemkni prémiové balíčky</p>
+            <p className="text-sm font-semibold">{t.paywallTitle}</p>
             <p className="text-[11px] text-muted-foreground">
-              Jednorázových {PREMIUM_PRICE_CZK} Kč — žádné předplatné. Platí napořád a odemkne všechny balíčky.
+              {fmt(t.paywallText, { price: premiumPrice })}
             </p>
             <Button className="w-full" onClick={() => startCheckout(paywall.userId)} disabled={loading}>
-              {loading ? "Přesměrovávám..." : `Zaplatit ${PREMIUM_PRICE_CZK} Kč`}
+              {loading ? t.redirecting : fmt(t.pay, { price: premiumPrice })}
             </Button>
             <button
               type="button"
@@ -327,7 +338,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
               onClick={() => setPaywall(null)}
               disabled={loading}
             >
-              Zpět
+              {t.back}
             </button>
           </div>
         ) : (
@@ -339,18 +350,18 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
             >
               <div className="space-y-1 text-left">
                 <label className="text-xs font-medium text-muted-foreground ml-1">
-                  {premiumMode ? 'E-mail (nutný pro Premium)' : 'E-mail (pro zaslání výsledků)'}
+                  {premiumMode ? t.emailLabelPremium : t.emailLabel}
                 </label>
                 <Input
                   type="email"
-                  placeholder="vás@email.cz"
+                  placeholder={t.emailPlaceholder}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={!isConfigured || loading}
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading || !isConfigured || !email}>
-                {loading ? "Startuji..." : premiumMode ? "Pokračovat" : "Začít s e-mailem"}
+                {loading ? t.starting : premiumMode ? t.continue : t.startEmail}
               </Button>
             </form>
 
@@ -362,7 +373,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Nebo</span>
+                    <span className="rounded-full bg-background px-2 text-muted-foreground">{t.or}</span>
                   </div>
                 </div>
 
@@ -373,10 +384,10 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
                     onClick={() => handleStart()}
                     disabled={loading || !isConfigured}
                   >
-                    {loading ? "Startuji..." : "Začít anonymně"}
+                    {loading ? t.starting : t.startAnon}
                   </Button>
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Při anonymním vstupu budete muset odkaz partnerovi poslat ručně. Výsledky se nebudou mít kam uložit pro pozdější přístup.
+                    {t.anonNote}
                   </p>
                 </div>
               </>

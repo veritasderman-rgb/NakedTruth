@@ -189,11 +189,9 @@ export default async function KinkComparePage({ params }: { params: Promise<{ id
           <Link href={href(`/kinkometr/vysledek/${mine.id}`)} className="rounded-md border border-white/15 px-4 py-2.5 text-sm font-medium hover:bg-white/5">
             {t.myCups}
           </Link>
-          {locale === 'cs' && (
-            <Link href="/#parovy-kviz" className="text-xs text-muted-foreground underline">
-              {t.tryQuizToo}
-            </Link>
-          )}
+          <Link href={`${href('/')}#parovy-kviz`} className="text-xs text-muted-foreground underline">
+            {t.tryQuizToo}
+          </Link>
         </footer>
       </div>
     </KinkShell>

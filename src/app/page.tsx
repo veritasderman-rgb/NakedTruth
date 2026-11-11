@@ -9,6 +9,8 @@ import { fmt, localePath } from "@/lib/i18n";
 import { CUPS, CUP_BY_KEY } from "@/lib/kink";
 import { getContent } from "@/lib/kink-content";
 import { getLocale } from "@/lib/locale";
+import { getQuiz } from "@/lib/quiz-content";
+import { premiumPriceLabel } from "@/lib/stripe";
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +32,7 @@ export default async function Home() {
   const locale = await getLocale();
   const c = getContent(locale);
   const t = c.ui;
+  const q = getQuiz(locale);
   const href = (path: string) => localePath(locale, path);
   const isConfigured = isDbConfigured();
 
@@ -72,30 +75,16 @@ export default async function Home() {
         <p className="mt-3 text-[11px] text-muted-foreground">{t.kinkFoot}</p>
       </section>
 
-      {/* Couples quiz — its question bank exists only in Czech so far */}
-      {locale === 'cs' ? (
-        <section id="parovy-kviz" className="mt-12 w-full scroll-mt-6">
-          <h2 className="text-2xl font-semibold tracking-tight">Párový kvíz naslepo</h2>
-          <div className="mt-3 space-y-4 text-pretty text-sm text-muted-foreground">
-            <p>
-              Každý z partnerů odpovídá na stejné otázky soukromě. Odpovědi uvidíte společně až ve chvíli, kdy budete mít oba hotovo.
-            </p>
-            <p className="glass rounded-lg p-3 text-xs italic">
-              Zvolte si počet otázek i to, jestli to bude spíš o vztahu, nebo se chcete
-              poznat i pod peřinou — včetně dominance a submise.
-            </p>
-          </div>
+      {/* Couples quiz */}
+      <section id="parovy-kviz" className="mt-12 w-full scroll-mt-6">
+        <h2 className="text-2xl font-semibold tracking-tight">{q.quizTitle}</h2>
+        <div className="mt-3 space-y-4 text-pretty text-sm text-muted-foreground">
+          <p>{q.quizLead}</p>
+          <p className="glass rounded-lg p-3 text-xs italic">{q.quizNote}</p>
+        </div>
 
-          <HomeForm isConfigured={isConfigured} missingVars={missingVars} />
-        </section>
-      ) : (
-        <p className="mt-8 text-xs text-muted-foreground">
-          {t.quizOnlyCs}{' '}
-          {/* Full navigation on purpose: the middleware has to see ?lang=cs to remember the choice. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a href="/?lang=cs#parovy-kviz" className="underline">{t.quizOnlyCsLink}</a>
-        </p>
-      )}
+        <HomeForm isConfigured={isConfigured} missingVars={missingVars} locale={locale} t={q} premiumPrice={premiumPriceLabel(locale)} />
+      </section>
 
       <div className="mt-12 w-full">
         <Tip locale={locale} t={t} />

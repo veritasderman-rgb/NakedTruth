@@ -4,6 +4,8 @@ import { getSql, isUuid } from '@/lib/db';
 import { sendInviteEmail, sendResultsReadyEmail } from '@/lib/mail';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
+import { isLocale, localePath, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
+import { getLocale } from '@/lib/locale';
 
 type Sql = ReturnType<typeof getSql>;
 
@@ -36,10 +38,18 @@ async function userHasPremium(sql: Sql, userId: string): Promise<boolean> {
   return !!row?.ok;
 }
 
-async function partnerAToken(sql: Sql, sessionId: string): Promise<string> {
-  const [session] = await sql`select partner_a_access_token from sessions where id = ${sessionId}`;
+// Records the language the session was started in and sends partner A to the
+// questionnaire in that language.
+async function openSession(sql: Sql, sessionId: string, locale: Locale): Promise<never> {
+  const [session] = await sql`
+    update sessions set locale = ${locale} where id = ${sessionId}
+    returning partner_a_access_token`;
   if (!session) throw new Error('Session creation failed');
-  return session.partner_a_access_token;
+  redirect(localePath(locale, `/session/${sessionId}?token=${session.partner_a_access_token}`));
+}
+
+function sessionLocale(value: unknown): Locale {
+  return isLocale(value) ? value : DEFAULT_LOCALE;
 }
 
 // Returned (instead of redirecting) when a premium pack is requested but the
@@ -96,8 +106,7 @@ export async function startSession(
         ) as id`;
 
   // 4. Send partner A to the questionnaire
-  const token = await partnerAToken(sql, created.id);
-  redirect(`/session/${created.id}?token=${token}`);
+  await openSession(sql, created.id, await getLocale());
 }
 
 export async function joinSession(sessionId: string) {
@@ -177,11 +186,12 @@ async function maybeSendResultsEmail(sql: Sql, sessionId: string) {
   const [claimed] = await sql`
     update sessions set results_email_sent_at = now()
     where id = ${sessionId} and status = 'completed' and results_email_sent_at is null
-    returning partner_a_user_id, partner_b_user_id, partner_a_access_token, partner_b_access_token`;
+    returning partner_a_user_id, partner_b_user_id, partner_a_access_token, partner_b_access_token, locale`;
 
   if (!claimed) return;
 
   const baseUrl = await getBaseUrl();
+  const locale = sessionLocale(claimed.locale);
   const recipients = [
     { userId: claimed.partner_a_user_id, token: claimed.partner_a_access_token },
     { userId: claimed.partner_b_user_id, token: claimed.partner_b_access_token },
@@ -191,7 +201,7 @@ async function maybeSendResultsEmail(sql: Sql, sessionId: string) {
     if (!r.userId) continue;
     const [u] = await sql`select email from users where id = ${r.userId}`;
     if (u?.email) {
-      await sendResultsReadyEmail(u.email, `${baseUrl}/session/${sessionId}?token=${r.token}`);
+      await sendResultsReadyEmail(u.email, `${baseUrl}${localePath(locale, `/session/${sessionId}?token=${r.token}`)}`, locale);
     }
   }
 }
@@ -213,11 +223,13 @@ export async function invitePartner(sessionId: string, partnerBEmail?: string) {
     on conflict do nothing`;
 
   // 3. Send email if provided
+  // The invite goes out in the language the inviter is using right now.
   const baseUrl = await getBaseUrl();
-  const inviteLink = `${baseUrl}/session/${sessionId}?token=${session.partner_b_access_token}`;
+  const locale = await getLocale();
+  const inviteLink = `${baseUrl}${localePath(locale, `/session/${sessionId}?token=${session.partner_b_access_token}`)}`;
 
   if (normalizedEmail) {
-    await sendInviteEmail(normalizedEmail, inviteLink);
+    await sendInviteEmail(normalizedEmail, inviteLink, locale);
   }
 
   return { success: true, inviteLink };
@@ -243,6 +255,5 @@ export async function generateNextSession(coupleId: string, userId: string, ques
       ${count}::int, ${tier}::tier_preference, ${maxIntensity}::int, ${themes}::text[]
     ) as id`;
 
-  const token = await partnerAToken(sql, created.id);
-  redirect(`/session/${created.id}?token=${token}`);
+  await openSession(sql, created.id, await getLocale());
 }

@@ -6,32 +6,32 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { generateNextSession } from "../../actions/session";
-import { computeScore, matchLabel } from "@/lib/scoring";
+import { categoryLabelKey, computeScore, matchLevel } from "@/lib/scoring";
+import { fmt, localePath, type Locale } from "@/lib/i18n";
+import type { QuizContent } from "@/lib/quiz-content";
 import { ChevronRight, BarChart3, Share2 } from "lucide-react";
 
-function parseScaleLabels(prompt: string): { low: string; high: string; cleanPrompt: string } {
+function parseScaleLabels(prompt: string, t: QuizContent): { low: string; high: string; cleanPrompt: string } {
   const match = prompt.match(/\(1\s*=\s*(.+?),\s*5\s*=\s*(.+?)\)\s*$/);
   if (match) {
     return { low: match[1].trim(), high: match[2].trim(), cleanPrompt: prompt.replace(match[0], '').trim() };
   }
-  return { low: 'Nikdy', high: 'Velmi často', cleanPrompt: prompt };
+  return { low: t.scaleLow, high: t.scaleHigh, cleanPrompt: prompt };
 }
 
-function formatValue(val: any, kind: string, labels?: { low: string; high: string } | null) {
-  if (val === null || val === undefined) return "Bez odpovědi";
-  if (kind === 'yes_no') return val === 'true' ? 'Ano' : 'Ne';
+function formatValue(val: any, kind: string, t: QuizContent, labels?: { low: string; high: string } | null) {
+  if (val === null || val === undefined) return t.noAnswer;
+  if (kind === 'yes_no') return val === 'true' ? t.yes : t.no;
   if (kind === 'frequency_1_5') {
     const n = parseInt(val);
-    const low = labels?.low ?? 'Nikdy';
-    const high = labels?.high ?? 'Velmi často';
-    if (n === 1) return low;
-    if (n === 5) return high;
+    if (n === 1) return labels?.low ?? t.scaleLow;
+    if (n === 5) return labels?.high ?? t.scaleHigh;
     return `${n}/5`;
   }
   return val;
 }
 
-export default function ComparisonView({ session, questions, answers, myUserId }: { session: any, questions: any[], answers: any[], myUserId: string }) {
+export default function ComparisonView({ session, questions, answers, myUserId, locale, t }: { session: any, questions: any[], answers: any[], myUserId: string, locale: Locale, t: QuizContent }) {
   const [generating, setGenerating] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
@@ -47,7 +47,7 @@ export default function ComparisonView({ session, questions, answers, myUserId }
     const valA = ansA?.answer_yes_no?.toString() ?? ansA?.answer_frequency?.toString() ?? ansA?.answer_text;
     const valB = ansB?.answer_yes_no?.toString() ?? ansB?.answer_frequency?.toString() ?? ansB?.answer_text;
     const isMatch = valA === valB && valA !== null && valA !== undefined && question.kind !== 'short_answer';
-    const labels = question.kind === 'frequency_1_5' ? parseScaleLabels(question.prompt) : null;
+    const labels = question.kind === 'frequency_1_5' ? parseScaleLabels(question.prompt, t) : null;
     const displayPrompt = labels ? labels.cleanPrompt : question.prompt;
     return { question, valA, valB, isMatch, labels, displayPrompt };
   });
@@ -58,7 +58,8 @@ export default function ComparisonView({ session, questions, answers, myUserId }
   const matchPercent = score.percent;
   const matchCount = score.matchCount;
   const comparableTotal = score.total;
-  const label = matchLabel(matchPercent);
+  const label = matchLevel(matchPercent);
+  const labelText = t[`level${label.level}`];
 
   const allRevealed = revealedCount >= questions.length;
 
@@ -91,11 +92,11 @@ export default function ComparisonView({ session, questions, answers, myUserId }
   };
 
   const handleShare = async () => {
-    const text = `NakedTruth: Naše shoda je ${matchPercent}% — ${label.text}! Zkuste to taky:`;
+    const text = fmt(t.shareResultText, { p: matchPercent, label: labelText });
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     // Share the privacy-safe results landing (aggregate numbers only, no answers)
     // so the link renders a tempting OG card and funnels viewers into their own quiz.
-    const url = `${origin}/share?p=${matchPercent}&m=${matchCount}&t=${comparableTotal}`;
+    const url = `${origin}${localePath(locale, `/share?p=${matchPercent}&m=${matchCount}&t=${comparableTotal}`)}`;
 
     if (navigator.share) {
       try {
@@ -110,18 +111,18 @@ export default function ComparisonView({ session, questions, answers, myUserId }
     <main className="mx-auto w-full max-w-2xl px-6 py-12">
       {/* Header with score teaser */}
       <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">Výsledky kola</h1>
+        <h1 className="text-3xl font-bold">{t.resultsTitle}</h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          Odhalujte odpovědi jednu po druhé a porovnejte, kde se shodujete.
+          {t.resultsLead}
         </p>
 
         {/* Progress bar */}
         <div className="mt-6 space-y-2">
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Odhaleno {revealedCount} z {questions.length}</span>
+            <span>{fmt(t.revealed, { i: revealedCount, n: questions.length })}</span>
             {!allRevealed && (
               <button onClick={handleRevealAll} className="underline hover:text-foreground transition-colors">
-                Odhalit vše
+                {t.revealAll}
               </button>
             )}
           </div>
@@ -147,7 +148,7 @@ export default function ComparisonView({ session, questions, answers, myUserId }
                     <CardContent className="flex items-center justify-center gap-2 py-8">
                       <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                       <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-                        Odhalit otázku {index + 1}
+                        {fmt(t.revealQuestion, { n: index + 1 })}
                       </span>
                     </CardContent>
                   </Card>
@@ -174,7 +175,7 @@ export default function ComparisonView({ session, questions, answers, myUserId }
                     </div>
                     {item.isMatch && (
                       <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 border-none shrink-0">
-                        Shoda
+                        {t.match}
                       </Badge>
                     )}
                   </div>
@@ -182,12 +183,12 @@ export default function ComparisonView({ session, questions, answers, myUserId }
                 <CardContent>
                   <div className="grid grid-cols-2 gap-6 pt-2 border-t border-muted/50">
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground/70">Partner A</span>
-                      <p className="text-sm font-semibold text-foreground/90">{formatValue(item.valA, item.question.kind, item.labels)}</p>
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground/70">{t.partnerA}</span>
+                      <p className="text-sm font-semibold text-foreground/90">{formatValue(item.valA, item.question.kind, t, item.labels)}</p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground/70">Partner B</span>
-                      <p className="text-sm font-semibold text-foreground/90">{formatValue(item.valB, item.question.kind, item.labels)}</p>
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground/70">{t.partnerB}</span>
+                      <p className="text-sm font-semibold text-foreground/90">{formatValue(item.valB, item.question.kind, t, item.labels)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -206,11 +207,11 @@ export default function ComparisonView({ session, questions, answers, myUserId }
               <div>
                 <p className="text-5xl font-bold text-primary">{matchPercent}%</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Shoda v {matchCount} z {comparableTotal} otázek
+                  {fmt(t.matchIn, { m: matchCount, t: comparableTotal })}
                 </p>
               </div>
               <p className="text-lg font-semibold" style={{ color: label.color }}>
-                {label.text}
+                {labelText}
               </p>
 
               {/* Per-category breakdown */}
@@ -219,7 +220,7 @@ export default function ComparisonView({ session, questions, answers, myUserId }
                   {score.categories.map((cat) => (
                     <div key={cat.key} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-foreground/80">{cat.label}</span>
+                        <span className="font-medium text-foreground/80">{t[categoryLabelKey(cat.key)]}</span>
                         <span className="text-muted-foreground">
                           {cat.percent}% · {cat.matchCount}/{cat.total}
                         </span>
@@ -236,7 +237,7 @@ export default function ComparisonView({ session, questions, answers, myUserId }
                   onClick={handleNextSession}
                   disabled={generating}
                 >
-                  {generating ? "Generuji..." : "Další kolo"}
+                  {generating ? t.generating : t.nextRound}
                 </Button>
                 <Button
                   variant="outline"
@@ -244,11 +245,11 @@ export default function ComparisonView({ session, questions, answers, myUserId }
                   onClick={handleShare}
                 >
                   <Share2 className="h-4 w-4 mr-2" />
-                  Sdílet výsledek
+                  {t.shareResult}
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Příští kolo bude obsahovat i peprnější otázky z druhé úrovně!
+                {t.nextRoundNote}
               </p>
             </CardContent>
           </Card>

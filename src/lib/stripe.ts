@@ -5,11 +5,19 @@ import type { Locale } from '@/lib/i18n';
 // without keys; the checkout/webhook routes return 503 in that case.
 export const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
-// One-time premium unlock. CZK is charged in haléř (the minor unit), so 29 Kč
-// is 2900.
-export const PREMIUM_PRICE_CZK = 29;
-export const PREMIUM_PRICE_MINOR = PREMIUM_PRICE_CZK * 100;
+// One-time premium unlock: 29 Kč on the Czech site, 1.49 € elsewhere. Amounts
+// are in the minor unit (haléř / cent), as Stripe expects.
 export const PREMIUM_PRODUCT_CODE = 'premium';
+
+export function premiumPricing(locale: Locale): { currency: 'czk' | 'eur'; minor: number } {
+  return locale === 'cs' ? { currency: 'czk', minor: 2900 } : { currency: 'eur', minor: 149 };
+}
+
+// "29 Kč" / "€1.49" for display.
+export function premiumPriceLabel(locale: Locale): string {
+  const { currency, minor } = premiumPricing(locale);
+  return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: minor % 100 === 0 ? 0 : 2 }).format(minor / 100);
+}
 
 // Voluntary "buy the author a coffee" tips. Three fixed tiers; Czech visitors
 // pay in CZK, everybody else in EUR. Amounts are in major units.
