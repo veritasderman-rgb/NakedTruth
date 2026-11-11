@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { submitAnswers } from "../../actions/session";
 
-export default function QuestionnaireForm({ sessionId, userId, questions, role }: { sessionId: string, userId: string, questions: any[], role: string }) {
+export default function QuestionnaireForm({ sessionId, token, questions }: { sessionId: string, token: string, questions: any[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<any[]>([]);
   const [currentValue, setCurrentValue] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export default function QuestionnaireForm({ sessionId, userId, questions, role }
     setSubmitting(true);
     setError(null);
     try {
-      await submitAnswers(sessionId, userId, finalAnswers, role);
+      await submitAnswers(sessionId, token, finalAnswers);
       window.location.reload();
     } catch (err: any) {
       console.error(err);

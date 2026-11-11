@@ -108,9 +108,8 @@ export default async function SessionPage({
     return (
       <QuestionnaireForm
         sessionId={id}
-        userId={userId}
+        token={token}
         questions={validQuestions}
-        role={role}
       />
     );
   } catch (err: any) {

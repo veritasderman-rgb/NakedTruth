@@ -150,7 +150,7 @@ export default async function KinkComparePage({ params }: { params: Promise<{ id
 
         <Group
           title="Prozkoumejte spolu"
-          hint="Tady si nejste jistí ani jeden. Ideální místo pro malý společný pokus."
+          hint="Tady si aspoň jeden z vás není jistý. Ideální místo pro malý společný pokus — bez závazku."
           rows={by('explore')}
           extra={(row) => <p className="text-[13px]">{TIPS[row.cup.key].firstStep}</p>}
         />

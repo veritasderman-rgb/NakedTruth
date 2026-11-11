@@ -117,9 +117,30 @@ export async function joinSession(sessionId: string) {
   return { success: true, userId };
 }
 
-export async function submitAnswers(sessionId: string, userId: string, answers: { questionId: number, kind: string, value: any }[], role: string) {
+// The caller proves who they are with their session access token; the role and
+// user id are derived from it, never taken from the client. Once a partner has
+// completed, their answers are final — a retried submit is a harmless no-op.
+export async function submitAnswers(sessionId: string, token: string, answers: { questionId: number, kind: string, value: any }[]) {
   const sql = getSql();
-  if (!isUuid(sessionId) || !isUuid(userId)) throw new Error('Neplatná relace');
+  if (!isUuid(sessionId) || !isUuid(token)) throw new Error('Neplatná relace');
+
+  const [session] = await sql`
+    select partner_a_user_id, partner_b_user_id, partner_a_access_token, partner_b_access_token,
+           partner_a_completed_at, partner_b_completed_at
+    from sessions where id = ${sessionId}`;
+  if (!session) throw new Error('Relace nebyla nalezena');
+
+  const role =
+    session.partner_a_access_token === token ? 'partner_a'
+    : session.partner_b_access_token === token ? 'partner_b'
+    : null;
+  if (!role) throw new Error('Neplatný token');
+
+  const userId: string | null = role === 'partner_a' ? session.partner_a_user_id : session.partner_b_user_id;
+  if (!userId) throw new Error('Relace nebyla nalezena');
+
+  const alreadyCompleted = role === 'partner_a' ? session.partner_a_completed_at : session.partner_b_completed_at;
+  if (alreadyCompleted) return { success: true };
 
   const rows = answers.map((a) => ({
     question_id: a.questionId,
@@ -128,7 +149,7 @@ export async function submitAnswers(sessionId: string, userId: string, answers: 
     answer_text: a.kind === 'short_answer' ? a.value : null,
   }));
 
-  // Upsert so a retried / double submit can't fail on the unique constraint.
+  // Upsert so a retry after a partial failure can't trip the unique constraint.
   await sql`
     insert into answers (session_id, question_id, user_id, answer_yes_no, answer_frequency, answer_text)
     select ${sessionId}::uuid, x.question_id, ${userId}::uuid, x.answer_yes_no, x.answer_frequency, x.answer_text

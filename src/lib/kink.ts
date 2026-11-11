@@ -451,10 +451,11 @@ export function recommend(cups: CupResults): Recommendations {
   const ranked = rankedCups(cups);
   const explored = ranked.filter((r) => !isUnexplored(r.result));
 
-  // Fullest cups that are at least half full (max 4); fall back to the single
-  // fullest one so the page never comes up empty.
+  // Fullest cups that are at least half full (max 4). When none is, fall back
+  // to the single fullest one — but only if it shows some interest; a clear
+  // "no" to everything gets no recommendation at all.
   let top = explored.filter((r) => r.result.fill >= 50).slice(0, 4);
-  if (top.length === 0 && explored.length > 0) top = explored.slice(0, 1);
+  if (top.length === 0 && explored.length > 0 && explored[0].result.fill >= 25) top = explored.slice(0, 1);
 
   const explore = ranked.filter((r) => isUnexplored(r.result)).slice(0, 4);
 
@@ -515,7 +516,9 @@ export function compareProfiles(a: CupResults, b: CupResults): Comparison {
     const diff = Math.abs(ra.fill - rb.fill);
     diffSum += diff;
     let kind: CupComparison['kind'] = 'neutral';
-    if (isUnexplored(ra) && isUnexplored(rb)) kind = 'explore';
+    // "I don't know" is never read as a yes: if either side is unsure, the
+    // cup is something to explore, not a shared interest.
+    if (isUnexplored(ra) || isUnexplored(rb)) kind = 'explore';
     else if (ra.fill >= 60 && rb.fill >= 60) kind = 'shared';
     else if (diff >= 40) kind = 'talk';
     else if (ra.fill < 25 && rb.fill < 25) kind = 'skip';
@@ -526,13 +529,16 @@ export function compareProfiles(a: CupResults, b: CupResults): Comparison {
   let dynamic: string | null = null;
   const [da, sa, db, sb] = [a.dominance, a.submission, b.dominance, b.submission];
   if (da && sa && db && sb) {
-    const aLeads = da.fill >= 60 && sb.fill >= 60;
-    const bLeads = db.fill >= 60 && sa.fill >= 60;
+    // Only cups the person was actually sure about count towards the verdict.
+    const sure = (r: CupResult) => (isUnexplored(r) ? 0 : r.fill);
+    const [daF, saF, dbF, sbF] = [sure(da), sure(sa), sure(db), sure(sb)];
+    const aLeads = daF >= 60 && sbF >= 60;
+    const bLeads = dbF >= 60 && saF >= 60;
     if (aLeads && bLeads) dynamic = 'Oba umíte vést i se odevzdat — střídání rolí (switch) je pro vás jako dělané.';
     else if (aLeads) dynamic = 'Zapadáte do sebe: ty rád/a vedeš, partner/ka se rád/a odevzdá.';
     else if (bLeads) dynamic = 'Zapadáte do sebe: partner/ka rád/a vede, ty se rád/a odevzdáš.';
-    else if (da.fill >= 60 && db.fill >= 60) dynamic = 'Oba chcete vést. Zkuste se střídat po večerech — nebo o vedení hrát.';
-    else if (sa.fill >= 60 && sb.fill >= 60) dynamic = 'Oba se chcete odevzdat. Losujte, kdo dnes povede, nebo si pokyny napište předem.';
+    else if (daF >= 60 && dbF >= 60) dynamic = 'Oba chcete vést. Zkuste se střídat po večerech — nebo o vedení hrát.';
+    else if (saF >= 60 && sbF >= 60) dynamic = 'Oba se chcete odevzdat. Losujte, kdo dnes povede, nebo si pokyny napište předem.';
   }
 
   return { rows, harmony, dynamic };
