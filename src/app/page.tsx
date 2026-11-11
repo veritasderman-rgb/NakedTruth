@@ -2,16 +2,16 @@ import Link from "next/link";
 import HomeForm from "./HomeForm";
 import CupGlass from "@/components/kink/CupGlass";
 import { isDbConfigured } from "@/lib/db";
-import { CUPS, MODES } from "@/lib/kink";
+import { CUPS, CUP_BY_KEY, MODES } from "@/lib/kink";
 
 export const dynamic = 'force-dynamic';
 
 // Decorative fill levels for the teaser cups on the landing page.
 const TEASER = [
-  { cup: CUPS[0], fill: 82 },
-  { cup: CUPS[2], fill: 55 },
-  { cup: CUPS[4], fill: 96 },
-  { cup: CUPS[9], fill: 30 },
+  { cup: CUP_BY_KEY.dominance, fill: 82 },
+  { cup: CUP_BY_KEY.bondage, fill: 55 },
+  { cup: CUP_BY_KEY.sensation, fill: 96 },
+  { cup: CUP_BY_KEY.verbal, fill: 30 },
 ];
 
 export default function Home() {
@@ -44,7 +44,7 @@ export default function Home() {
         </div>
         <h2 className="mt-4 text-2xl font-semibold tracking-tight">Kinkometr</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Jak plné máš poháry? 12 oblastí od něhy po BDSM. Zjistíš, co tě láká, co ne — a co zatím nevíš.
+          Jak plné máš poháry? {CUPS.length} oblastí od něhy po BDSM. Zjistíš, co tě láká, co ne — a co zatím nevíš.
           K tomu tipy na aktivity, polohy, místa i kde potkat podobně naladěné.
         </p>
         <Link
@@ -56,15 +56,15 @@ export default function Home() {
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <Link href="/kinkometr?mode=bdsm" className="rounded-md border border-white/15 px-3 py-2 hover:bg-white/5">
             <span className="block font-semibold">{MODES.bdsm.label}</span>
-            <span className="text-muted-foreground">Dominance, submise, svazování</span>
+            <span className="text-muted-foreground">Moc, svazování, bolest</span>
           </Link>
           <Link href="/kinkometr?mode=quick" className="rounded-md border border-white/15 px-3 py-2 hover:bg-white/5">
             <span className="block font-semibold">{MODES.quick.label}</span>
-            <span className="text-muted-foreground">24 otázek, 2 minuty</span>
+            <span className="text-muted-foreground">{CUPS.length} otázek, 2 minuty</span>
           </Link>
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Nejsi si jistý/á? Odpověď „Nevím“ se počítá — a pak můžeš poháry porovnat s partnerem.
+          Nejsi si jistý/á? Odpověď „Nevím“ se počítá. S partnerem pak uvidíte jen to, na čem se shodnete.
         </p>
       </section>
 

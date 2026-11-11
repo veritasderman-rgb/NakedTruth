@@ -10,11 +10,13 @@ import {
   MODES,
   PLACES_LEGAL_NOTE,
   SAFETY_RULES,
+  depthLabel,
   fillLabel,
   fullCupCount,
+  groupSummaries,
   isUnexplored,
-  rankedCups,
   recommend,
+  sideLabel,
 } from '@/lib/kink';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +37,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function TipList({ label, items }: { label: string; items: string[] }) {
+  if (items.length === 0) return null;
   return (
     <div>
       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
@@ -69,50 +72,90 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
   }
 
   const invited = await getInvitedProfiles(profile.id).catch(() => []);
-  const ranked = rankedCups(profile.cups);
-  const { full, total } = fullCupCount(profile.cups);
+  const inviter = profile.partnerOf ? await getKinkProfile(profile.partnerOf).catch(() => null) : null;
+  const groups = groupSummaries(profile.cups);
+  const { full, unexplored: unexploredCount, total } = fullCupCount(profile.cups);
   const rec = recommend(profile.cups);
   const persona = rec.top[0]?.cup.persona;
-  const unexploredCount = ranked.filter((r) => isUnexplored(r.result)).length;
+  const topGroup = [...groups].sort((a, b) => b.avg - a.avg)[0];
   const showSafety = [...rec.top, ...rec.explore].some((t) => t.cup.bdsm);
+  const { single, lowDesire } = profile.context;
+
+  // The headline never reads as a score out of N — an empty cup is not a failure.
+  const headline =
+    full === 0
+      ? 'Žádný pohár zatím nepřetéká'
+      : full === 1
+        ? 'Jeden pohár máš plný'
+        : `${full} ${full < 5 ? 'poháry máš plné' : 'pohárů máš plných'}`;
 
   return (
     <KinkShell>
       <div className="space-y-10">
         <header className="space-y-2">
-          <p className="text-xs text-muted-foreground">{MODES[profile.mode].label}</p>
-          <h1 className="text-balance text-3xl font-semibold tracking-tight">
-            {full === 0 ? 'Žádný pohár zatím nepřetéká' : `${full} z ${total} pohárů máš plných`}
-          </h1>
+          <p className="text-xs text-muted-foreground">{MODES[profile.mode].label} · {total} pohárů</p>
+          <h1 className="text-balance text-3xl font-semibold tracking-tight">{headline}</h1>
           <p className="text-sm text-muted-foreground">
             {persona && <>Tvůj nejplnější pohár z tebe dělá typ <strong className="text-foreground">{persona}</strong>. </>}
+            {topGroup && topGroup.avg >= 40 && <>Nejvíc tě to táhne do oblasti <strong className="text-foreground">{topGroup.label}</strong>. </>}
             {unexploredCount > 0 &&
               `${unexploredCount} ${unexploredCount === 1 ? 'pohár je neprozkoumaný' : unexploredCount < 5 ? 'poháry jsou neprozkoumané' : 'pohárů je neprozkoumaných'} — a to je v pořádku.`}
           </p>
+          {(full === 0 || lowDesire) && (
+            <p className="rounded-xl border bg-card/60 p-3 text-xs text-muted-foreground">
+              {lowDesire
+                ? 'Psal/a jsi, že sex pro tebe není moc důležitý. Prázdné poháry pak nejsou mezera, kterou je potřeba zaplnit — jsou prostě tvoje odpověď. Vezmi si odsud jen to, co tě opravdu zajímá.'
+                : 'Prázdné poháry nejsou špatný výsledek. Znamenají jen, že tě tyhle věci nelákají — a to je užitečné vědět stejně jako opak.'}
+            </p>
+          )}
         </header>
 
-        {/* The cups */}
-        <div className="grid grid-cols-3 gap-x-2 gap-y-6">
-          {ranked.map(({ cup, result }) => {
-            const unexplored = isUnexplored(result);
-            return (
-              <div key={cup.key} className="flex flex-col items-center text-center">
-                <CupGlass id={cup.key} fill={result.fill} color={cup.color} unexplored={unexplored} size={84} />
-                <p className="mt-1 text-xs font-semibold leading-tight">{cup.label}</p>
-                <p className="text-[11px] tabular-nums" style={{ color: cup.color }}>
-                  {result.fill} % · {fillLabel(result)}
-                </p>
+        {/* The cups, by group */}
+        <div className="space-y-8">
+          {groups.map((g) => (
+            <section key={g.key} className="space-y-3">
+              <div className="flex items-baseline justify-between gap-3 border-b pb-1.5">
+                <h2 className="text-sm font-semibold">{g.label}</h2>
+                <span className="text-[11px] tabular-nums text-muted-foreground">průměr {g.avg} %</span>
               </div>
-            );
-          })}
+              <div className="grid grid-cols-3 gap-x-2 gap-y-5">
+                {g.cups.map(({ cup, result }) => {
+                  const unexplored = isUnexplored(result);
+                  const side = sideLabel(cup, result);
+                  return (
+                    <div key={cup.key} className="flex flex-col items-center text-center">
+                      <CupGlass id={cup.key} fill={result.fill} color={cup.color} unexplored={unexplored} size={76} />
+                      <p className="mt-1 text-xs font-semibold leading-tight">{cup.label}</p>
+                      <p className="text-[11px] tabular-nums" style={{ color: cup.color }}>
+                        {result.fill} % · {fillLabel(result)}
+                      </p>
+                      {result.depth !== undefined && (
+                        <p className="text-[10px] leading-tight text-muted-foreground">
+                          {depthLabel(result.depth)}{side ? ` · ${side}` : ''}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
+
+        {profile.missing && (
+          <section className="rounded-xl border border-dashed p-4">
+            <h2 className="text-sm font-semibold">Tvůj vlastní pohár</h2>
+            <p className="mt-1 whitespace-pre-wrap text-sm">{profile.missing}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">Tohle jsme neměřili. Vidíš to jen ty — partnerovi se to v porovnání neukáže.</p>
+          </section>
+        )}
 
         {/* Partner comparison */}
         <section className="space-y-3 rounded-xl border border-primary/30 bg-primary/10 p-4">
           <h2 className="text-base font-semibold">Porovnej poháry s partnerem</h2>
-          {profile.partnerOf && (
+          {inviter && (
             <Link
-              href={`/kinkometr/porovnani/${profile.id}/${profile.partnerOf}`}
+              href={`/kinkometr/porovnani/${profile.id}/${inviter.inviteToken}`}
               className="block rounded-md bg-primary px-4 py-2.5 text-center text-sm font-medium text-primary-foreground"
             >
               Zobrazit porovnání s tím, kdo tě pozval
@@ -120,19 +163,23 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
           )}
           {invited.map((p, i) => (
             <Link
-              key={p.id}
-              href={`/kinkometr/porovnani/${profile.id}/${p.id}`}
+              key={p.inviteToken}
+              href={`/kinkometr/porovnani/${profile.id}/${p.inviteToken}`}
               className="block rounded-md bg-primary px-4 py-2.5 text-center text-sm font-medium text-primary-foreground"
             >
               Partner/ka má hotovo — zobrazit porovnání{invited.length > 1 ? ` (${i + 1})` : ''}
             </Link>
           ))}
           <p className="text-xs text-muted-foreground">
-            Pošli odkaz. Partner/ka odpoví na stejné otázky a oba uvidíte, které poháry máte společné,
-            kde se doplňujete a o čem si promluvit. Uvidí tvoje poháry, ne jednotlivé odpovědi.
+            {single && invited.length === 0 && !inviter
+              ? 'Až někoho potkáš, pošli mu odkaz. '
+              : 'Pošli odkaz. '}
+            Druhý odpoví na stejné otázky a oba uvidíte jen to, na čem se shodnete: poháry, které chcete oba,
+            a ty, kde aspoň jeden váhá. Co jeden z vás nechce, zůstane skryté — a nikdo se nedozví, kdo to byl.
+            Tenhle tvůj výsledek partner neuvidí.
           </p>
           <CopyLink
-            path={`/kinkometr?partner=${profile.id}`}
+            path={`/kinkometr?partner=${profile.inviteToken}`}
             label={invited.length > 0 ? 'Zkopírovat pozvánku znovu' : 'Zkopírovat pozvánku pro partnera'}
           />
         </section>
@@ -155,6 +202,7 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
                     <TipList label="Aktivity" items={tips.activities} />
                     <TipList label="Polohy" items={tips.positions} />
                     <TipList label="Kde" items={tips.places} />
+                    {tips.deeper && (result.depth ?? 0) >= 45 && <TipList label="Když chceš dál" items={[tips.deeper]} />}
                   </div>
                 </details>
               ))}
@@ -195,8 +243,8 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
           </Section>
         )}
 
-        {rec.dating.length > 0 && (
-          <Section title="Kde potkat podobně naladěné">
+        {(rec.dating.length > 0) && (
+          <Section title={single ? "Kde potkat někoho naladěného podobně" : "Kde potkat podobně naladěné"}>
             <ul className="space-y-2">
               {rec.dating.map((d) => (
                 <li key={d.name} className="rounded-xl border bg-card/60 p-3">
@@ -225,7 +273,7 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
 
         <footer className="space-y-3 border-t pt-6 text-center">
           <p className="text-[11px] text-muted-foreground">
-            Výsledek je anonymní a dostupný jen přes tento odkaz — ulož si ho, pokud se k němu chceš vrátit.
+            Výsledek je anonymní a dostupný jen přes tento odkaz — ulož si ho a nikomu ho neposílej. Pro partnera je určená pozvánka výše.
           </p>
           <div className="flex flex-col gap-2">
             <Link href="/#parovy-kviz" className="rounded-md border px-4 py-2.5 text-sm font-medium hover:bg-accent">

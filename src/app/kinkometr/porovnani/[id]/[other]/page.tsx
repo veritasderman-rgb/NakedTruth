@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import KinkShell from '@/components/kink/Shell';
 import CupGlass from '@/components/kink/CupGlass';
-import { getKinkProfile } from '@/lib/kink-store';
-import { SAFETY_RULES, TIPS, compareProfiles, type CupComparison } from '@/lib/kink';
+import { getKinkProfile, getKinkProfileByInvite } from '@/lib/kink-store';
+import { SAFETY_RULES, TIPS, compareProfiles, isUnexplored, type CupComparison, type CupResult } from '@/lib/kink';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +19,11 @@ function harmonyLabel(h: number): string {
   return 'Každý jinde — o to víc je o čem mluvit';
 }
 
+function stanceWord(r: CupResult): string {
+  if (isUnexplored(r)) return 'neví';
+  return r.fill >= 60 ? 'chce' : 'možná';
+}
+
 function Bars({ row }: { row: CupComparison }) {
   return (
     <div className="space-y-1">
@@ -31,10 +36,10 @@ function Bars({ row }: { row: CupComparison }) {
           <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
             <span
               className="block h-full rounded-full"
-              style={{ width: `${r.fill}%`, backgroundColor: row.cup.color, boxShadow: `0 0 8px ${row.cup.color}` }}
+              style={{ width: `${r.fill}%`, backgroundColor: row.cup.color, boxShadow: `0 0 8px ${row.cup.color}`, opacity: isUnexplored(r) ? 0.45 : 1 }}
             />
           </span>
-          <span className="w-9 shrink-0 text-right tabular-nums">{r.fill} %</span>
+          <span className="w-12 shrink-0 text-right">{stanceWord(r)}</span>
         </div>
       ))}
     </div>
@@ -61,7 +66,10 @@ function Group({
       </div>
       {rows.map((row) => (
         <div key={row.cup.key} className="space-y-3 rounded-xl border bg-card/60 p-4" style={{ borderColor: `${row.cup.color}55` }}>
-          <p className="text-sm font-semibold" style={{ color: row.cup.color }}>{row.cup.label}</p>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: row.cup.color }}>{row.cup.label}</p>
+            <p className="text-[11px] text-muted-foreground">{row.cup.desc}</p>
+          </div>
           <Bars row={row} />
           {extra?.(row)}
         </div>
@@ -70,35 +78,38 @@ function Group({
   );
 }
 
+function NotFound() {
+  return (
+    <KinkShell>
+      <div className="space-y-4 py-16 text-center">
+        <h1 className="text-xl font-bold">Porovnání nenalezeno</h1>
+        <p className="text-sm text-muted-foreground">Odkaz je neúplný, nebo tyto dva výsledky k sobě nepatří.</p>
+        <Link href="/kinkometr" className="inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground">
+          Udělat si Kinkometr
+        </Link>
+      </div>
+    </KinkShell>
+  );
+}
+
+// `id` is the viewer's private profile id; `other` is the partner's shareable
+// invite token. The partner's private id never appears in a URL.
 export default async function KinkComparePage({ params }: { params: Promise<{ id: string; other: string }> }) {
   const { id, other } = await params;
   const [mine, theirs] = await Promise.all([
     getKinkProfile(id).catch(() => null),
-    getKinkProfile(other).catch(() => null),
+    getKinkProfileByInvite(other).catch(() => null),
   ]);
 
   // Only profiles connected through an invite may be compared.
-  const linked = mine && theirs && (mine.partnerOf === theirs.id || theirs.partnerOf === mine.id);
-
-  if (!mine || !theirs || !linked) {
-    return (
-      <KinkShell>
-        <div className="space-y-4 py-16 text-center">
-          <h1 className="text-xl font-bold">Porovnání nenalezeno</h1>
-          <p className="text-sm text-muted-foreground">Odkaz je neúplný, nebo tyto dva výsledky k sobě nepatří.</p>
-          <Link href="/kinkometr" className="inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground">
-            Udělat si Kinkometr
-          </Link>
-        </div>
-      </KinkShell>
-    );
+  if (!mine || !theirs || !(mine.partnerOf === theirs.id || theirs.partnerOf === mine.id)) {
+    return <NotFound />;
   }
 
   const cmp = compareProfiles(mine.cups, theirs.cups);
   const by = (kind: CupComparison['kind']) => cmp.rows.filter((r) => r.kind === kind);
   const shared = by('shared');
-  const rest = [...by('neutral'), ...by('skip')];
-  const showSafety = [...shared, ...by('explore')].some((r) => r.cup.bdsm);
+  const showSafety = cmp.rows.some((r) => r.cup.bdsm);
 
   return (
     <KinkShell>
@@ -109,8 +120,10 @@ export default async function KinkComparePage({ params }: { params: Promise<{ id
           <h1 className="text-lg font-semibold">{harmonyLabel(cmp.harmony)}</h1>
           <p className="text-xs text-muted-foreground">
             {shared.length > 0
-              ? `Společně plných pohárů: ${shared.length}.`
-              : 'Žádný pohár zatím nemáte plný oba — podívejte se, kde jste si nejblíž.'}
+              ? `Pohárů, které chcete oba: ${shared.length}.`
+              : cmp.rows.length > 0
+                ? 'Žádný pohár zatím nechcete naplno oba — ale je kde začít.'
+                : 'Zatím jste se nepotkali v žádném poháru. I to je užitečné vědět — zkuste si o tom promluvit.'}
           </p>
         </header>
 
@@ -130,32 +143,47 @@ export default async function KinkComparePage({ params }: { params: Promise<{ id
         )}
 
         <Group
-          title="Společné poháry"
+          title="Oba ano"
           hint="Tohle láká vás oba. Není na co čekat."
           rows={shared}
-          extra={(row) => (
-            <ul className="space-y-1.5 text-[13px]">
-              <li><span className="text-muted-foreground">Zkuste: </span>{TIPS[row.cup.key].activities[0]}</li>
-              <li><span className="text-muted-foreground">Poloha: </span>{TIPS[row.cup.key].positions[0]}</li>
-              <li><span className="text-muted-foreground">Kde: </span>{TIPS[row.cup.key].places[0]}</li>
-            </ul>
-          )}
+          extra={(row) => {
+            const tips = TIPS[row.cup.key];
+            return (
+              <ul className="space-y-1.5 text-[13px]">
+                {row.fit && <li className="font-medium">{row.fit}</li>}
+                <li><span className="text-muted-foreground">Zkuste: </span>{tips.activities[0]}</li>
+                {tips.positions[0] && <li><span className="text-muted-foreground">Poloha: </span>{tips.positions[0]}</li>}
+                {tips.places[0] && <li><span className="text-muted-foreground">Kde: </span>{tips.places[0]}</li>}
+              </ul>
+            );
+          }}
         />
 
         <Group
-          title="O čem si promluvit"
-          hint="Jeden má plno, druhý skoro prázdno. Ne znamená ne — ale stojí za to vědět proč a jestli existuje verze, která by bavila oba."
-          rows={by('talk')}
+          title="Jeden ano, druhý možná"
+          hint="Jeden z vás to chce, druhý váhá nebo neví. Tempo určuje ten, kdo váhá — a „možná“ se může kdykoli změnit v „ne“."
+          rows={by('invite')}
+          extra={(row) => <p className="text-[13px]"><span className="text-muted-foreground">Malý první krok: </span>{TIPS[row.cup.key].firstStep}</p>}
         />
 
         <Group
-          title="Prozkoumejte spolu"
-          hint="Tady si aspoň jeden z vás není jistý. Ideální místo pro malý společný pokus — bez závazku."
+          title="Oba možná"
+          hint="Tady váháte nebo nevíte oba. Ideální místo pro malý společný pokus — bez závazku."
           rows={by('explore')}
           extra={(row) => <p className="text-[13px]">{TIPS[row.cup.key].firstStep}</p>}
         />
 
-        <Group title="Ostatní poháry" hint="Bez velkých rozdílů." rows={rest} />
+        {cmp.hidden > 0 && (
+          <section className="rounded-xl border border-dashed p-4 text-sm">
+            <p className="font-semibold">
+              {cmp.hidden} {cmp.hidden === 1 ? 'pohár zůstává skrytý' : cmp.hidden < 5 ? 'poháry zůstávají skryté' : 'pohárů zůstává skrytých'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Aspoň jeden z vás o ně nestojí. Neříkáme kdo — kdo po něčem touží, není vystaven tomu, kdo ne,
+              a nikdo není tlačen do toho, co nechce. Jestli o nich chcete mluvit, je to na vás dvou.
+            </p>
+          </section>
+        )}
 
         {showSafety && (
           <section className="space-y-2">
