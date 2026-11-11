@@ -1,12 +1,12 @@
 import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { getSql, isUuid } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 // Stripe webhook. On a completed checkout, grant the purchased entitlement to
 // the user from the session metadata. Idempotent: the entitlements table has a
-// unique (user_id, product_code) constraint and we ignore duplicates, so retried
+// unique (user_id, product_code) constraint and duplicates are ignored, so retried
 // webhooks are safe.
 export async function POST(req: Request) {
   if (!stripe) return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
@@ -31,20 +31,17 @@ export async function POST(req: Request) {
     const productCode = session.metadata?.product_code || 'premium';
     const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : null;
 
-    if (userId) {
-      const supabase = getSupabaseAdmin();
-      const { error } = await supabase.from('entitlements').upsert(
-        {
-          user_id: userId,
-          product_code: productCode,
-          source: 'stripe',
-          stripe_payment_intent_id: paymentIntent,
-        },
-        { onConflict: 'user_id,product_code', ignoreDuplicates: true }
-      );
-      if (error) console.error('[webhook] failed to grant entitlement', error);
+    if (isUuid(userId)) {
+      try {
+        await getSql()`
+          insert into entitlements (user_id, product_code, source, stripe_payment_intent_id)
+          values (${userId}, ${productCode}, 'stripe', ${paymentIntent})
+          on conflict (user_id, product_code) do nothing`;
+      } catch (error) {
+        console.error('[webhook] failed to grant entitlement', error);
+      }
     } else {
-      console.warn('[webhook] checkout.session.completed without user_id metadata');
+      console.warn('[webhook] checkout.session.completed without a valid user_id in metadata');
     }
   }
 

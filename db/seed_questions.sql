@@ -1,245 +1,12 @@
--- Master Setup for NakedTruth (Schema + 300 Questions)
--- Run this ENTIRE script in Supabase SQL Editor.
--- This script is idempotent (can be run multiple times safely).
+-- NakedTruth — question bank seed. Idempotent (matches on prompt), safe to re-run.
+--   psql "$DATABASE_URL" -f db/seed_questions.sql
 
-BEGIN;
+begin;
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
--- 1. Create Enums safely
-DO $$ BEGIN
-    CREATE TYPE public.question_tier AS ENUM ('tier_1', 'tier_2');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE public.question_kind AS ENUM ('yes_no', 'frequency_1_5', 'short_answer');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE public.session_status AS ENUM ('pending_partner', 'completed');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE public.participant_role AS ENUM ('partner_a', 'partner_b');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
--- 2. Create Tables
-CREATE TABLE IF NOT EXISTS public.users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email text UNIQUE,
-  is_anonymous boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT users_email_lowercase CHECK (email = lower(email))
-);
-
-CREATE TABLE IF NOT EXISTS public.couples (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_by_user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.couple_members (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  couple_id uuid NOT NULL REFERENCES public.couples(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  role public.participant_role NOT NULL,
-  joined_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (couple_id, user_id),
-  UNIQUE (couple_id, role)
-);
-
-CREATE TABLE IF NOT EXISTS public.questions (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  tier public.question_tier NOT NULL,
-  kind public.question_kind NOT NULL,
-  prompt text NOT NULL,
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_questions_tier_active ON public.questions (tier, is_active);
-
-CREATE TABLE IF NOT EXISTS public.sessions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  couple_id uuid NOT NULL REFERENCES public.couples(id) ON DELETE CASCADE,
-  created_by_user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
-  session_number int NOT NULL,
-  status public.session_status NOT NULL DEFAULT 'pending_partner',
-  partner_a_user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
-  partner_b_user_id uuid REFERENCES public.users(id) ON DELETE RESTRICT,
-  partner_a_completed_at timestamptz,
-  partner_b_completed_at timestamptz,
-  completed_at timestamptz,
-  partner_a_access_token uuid NOT NULL DEFAULT gen_random_uuid(),
-  partner_b_access_token uuid NOT NULL DEFAULT gen_random_uuid(),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (couple_id, session_number),
-  UNIQUE (partner_a_access_token),
-  UNIQUE (partner_b_access_token)
-);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_couple_created_at ON public.sessions (couple_id, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS public.session_questions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id uuid NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
-  question_id bigint NOT NULL REFERENCES public.questions(id) ON DELETE RESTRICT,
-  question_order int NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (session_id, question_id),
-  UNIQUE (session_id, question_order)
-);
-
-CREATE INDEX IF NOT EXISTS idx_session_questions_session ON public.session_questions (session_id, question_order);
-
-CREATE TABLE IF NOT EXISTS public.answers (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id uuid NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
-  question_id bigint NOT NULL REFERENCES public.questions(id) ON DELETE RESTRICT,
-  user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  answer_yes_no boolean,
-  answer_frequency smallint,
-  answer_text text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (session_id, question_id, user_id),
-  CONSTRAINT answers_frequency_range CHECK (
-    answer_frequency IS NULL OR (answer_frequency BETWEEN 1 AND 5)
-  )
-);
-
-CREATE INDEX IF NOT EXISTS idx_answers_session_user ON public.answers (session_id, user_id);
-
--- 3. Functions & Triggers
-CREATE OR REPLACE FUNCTION public.validate_answer_question_in_session()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public.session_questions sq
-    WHERE sq.session_id = new.session_id
-      AND sq.question_id = new.question_id
-  ) THEN
-    RAISE EXCEPTION 'Question % is not part of session %', new.question_id, new.session_id;
-  END IF;
-
-  new.updated_at := now();
-  RETURN new;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_validate_answer_question_in_session ON public.answers;
-CREATE TRIGGER trg_validate_answer_question_in_session
-BEFORE INSERT OR UPDATE ON public.answers
-FOR EACH ROW EXECUTE FUNCTION public.validate_answer_question_in_session();
-
-CREATE OR REPLACE FUNCTION public.create_next_session(
-  p_couple_id uuid,
-  p_created_by_user_id uuid,
-  p_partner_a_user_id uuid,
-  p_question_count int DEFAULT 20,
-  p_tier2_mix_count int DEFAULT 10
-)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_session_id uuid;
-  v_session_number int;
-  v_total_previous int;
-  v_tier2_count int;
-  v_tier1_count int;
-BEGIN
-  SELECT count(*) INTO v_total_previous FROM public.sessions WHERE couple_id = p_couple_id;
-  v_session_number := v_total_previous + 1;
-
-  INSERT INTO public.sessions (couple_id, created_by_user_id, session_number, partner_a_user_id, status)
-  VALUES (p_couple_id, p_created_by_user_id, v_session_number, p_partner_a_user_id, 'pending_partner')
-  RETURNING id INTO v_session_id;
-
-  IF v_session_number = 1 THEN
-    v_tier2_count := 0;
-    v_tier1_count := p_question_count;
-  ELSE
-    v_tier2_count := p_tier2_mix_count;
-    v_tier1_count := p_question_count - v_tier2_count;
-  END IF;
-
-  WITH used_questions AS (
-    SELECT DISTINCT sq.question_id
-    FROM public.session_questions sq
-    JOIN public.sessions s ON s.id = sq.session_id
-    WHERE s.couple_id = p_couple_id
-  ),
-  tier1_pick AS (
-    SELECT q.id AS question_id FROM public.questions q
-    WHERE q.is_active = true AND q.tier = 'tier_1'
-      AND NOT EXISTS (SELECT 1 FROM used_questions uq WHERE uq.question_id = q.id)
-    ORDER BY random() LIMIT v_tier1_count
-  ),
-  tier2_pick AS (
-    SELECT q.id AS question_id FROM public.questions q
-    WHERE q.is_active = true AND q.tier = 'tier_2'
-      AND NOT EXISTS (SELECT 1 FROM used_questions uq WHERE uq.question_id = q.id)
-    ORDER BY random() LIMIT v_tier2_count
-  ),
-  merged AS (
-    SELECT question_id FROM tier1_pick
-    UNION ALL
-    SELECT question_id FROM tier2_pick
-  ),
-  ordered AS (
-    SELECT question_id, row_number() OVER (ORDER BY random()) AS question_order
-    FROM merged
-  )
-  INSERT INTO public.session_questions (session_id, question_id, question_order)
-  SELECT v_session_id, o.question_id, o.question_order
-  FROM ordered o;
-
-  RETURN v_session_id;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.complete_partner_submission(
-  p_session_id uuid,
-  p_user_id uuid,
-  p_role public.participant_role
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF p_role = 'partner_a' THEN
-    UPDATE public.sessions SET partner_a_completed_at = coalesce(partner_a_completed_at, now())
-    WHERE id = p_session_id AND partner_a_user_id = p_user_id;
-  ELSIF p_role = 'partner_b' THEN
-    UPDATE public.sessions SET partner_b_completed_at = coalesce(partner_b_completed_at, now())
-    WHERE id = p_session_id AND partner_b_user_id = p_user_id;
-  END IF;
-
-  UPDATE public.sessions SET status = 'completed', completed_at = coalesce(completed_at, now())
-  WHERE id = p_session_id AND partner_a_completed_at IS NOT NULL AND partner_b_completed_at IS NOT NULL;
-END;
-$$;
-
--- 4. Seed Questions (Truncate first to avoid duplicates if running master script again)
-TRUNCATE public.questions RESTART IDENTITY CASCADE;
-
-INSERT INTO public.questions (tier, kind, prompt) VALUES
+-- ===== Tier 1 — vztahy & soužití =====
+insert into questions (tier, kind, prompt)
+select v.tier::question_tier, v.kind::question_kind, v.prompt
+from (values
   ('tier_1', 'frequency_1_5', 'Jak moc tě štvou moji rodiče nebo rodina? (1 = vůbec, miluju je, 5 = nemůžu je vystát)'),
   ('tier_1', 'yes_no', 'Máš pocit, že ve vztahu momentálně táhneš víc finančních nákladů než já?'),
   ('tier_1', 'short_answer', 'Který můj každodenní zvyk tě neskutečně vytáčí, ale zatím jsi to držel/a v sobě?'),
@@ -339,9 +106,14 @@ INSERT INTO public.questions (tier, kind, prompt) VALUES
   ('tier_1', 'yes_no', 'Stydíš se za mě občas, když se ve společnosti opiju nebo jsem trochu víc ''naladěný/á''?'),
   ('tier_1', 'yes_no', 'Předstíral/a jsi někdy nemoc nebo únavu jen proto, abys nemusel/a jít na sraz s mojí rodinou nebo mými přáteli?'),
   ('tier_1', 'frequency_1_5', 'Jak moc jistý/á se cítíš ohledně své pozice v mém životě oproti mé kariéře a mým dalším povinnostem? (1 = cítím se na vedlejší koleji, 5 = vím, že jsem absolutní priorita)'),
-  ('tier_1', 'short_answer', 'Jaká je ta nejvíc zraňující věc, kterou jsem ti kdy řekl/a, já na ni už možná zapomněl/a, ale ty ji máš pořád v hlavě?');
+  ('tier_1', 'short_answer', 'Jaká je ta nejvíc zraňující věc, kterou jsem ti kdy řekl/a, já na ni už možná zapomněl/a, ale ty ji máš pořád v hlavě?')
+) as v(tier, kind, prompt)
+where not exists (select 1 from questions q where q.prompt = v.prompt);
 
-INSERT INTO public.questions (tier, kind, prompt) VALUES
+-- ===== Tier 2 — pod peřinou =====
+insert into questions (tier, kind, prompt)
+select v.tier::question_tier, v.kind::question_kind, v.prompt
+from (values
   ('tier_2', 'frequency_1_5', 'Jak moc jsi aktuálně spokojený/á s frekvencí našeho sexu? (1 = je ho hrozně málo, 5 = je to naprosto ideální)'),
   ('tier_2', 'yes_no', 'Sleduješ pravidelně porno?'),
   ('tier_2', 'short_answer', 'Jaký typ porna tě vzrušuje nejvíc a nikdy jsi mi to neřekl/a?'),
@@ -541,6 +313,68 @@ INSERT INTO public.questions (tier, kind, prompt) VALUES
   ('tier_2', 'short_answer', 'Jaká je absolutně nejvíc prasácká myšlenka, kterou jsi o mně měl/a v průběhu dnešního dne?'),
   ('tier_2', 'frequency_1_5', 'Jak moc souhlasíš s tvrzením: ''Sex bez hlubokého citového propojení je vlastně jen taková gymnastika.''? (1 = absolutně nesouhlasím, sex je sex, 5 = naprosto souhlasím)'),
   ('tier_2', 'yes_no', 'Máš občas chuť, abych byl/a v posteli vyloženě sobecký/á a prostě si vzal/a to, co chci já, bez ohledu na tebe?'),
-  ('tier_2', 'yes_no', 'Kdyby se ukázalo, že se v této aplikaci shodneme v našich nejdivočejších fantaziích, měl/a bys reálnou odvahu to se mnou zkusit hned dnes večer?');
+  ('tier_2', 'yes_no', 'Kdyby se ukázalo, že se v této aplikaci shodneme v našich nejdivočejších fantaziích, měl/a bys reálnou odvahu to se mnou zkusit hned dnes večer?')
+) as v(tier, kind, prompt)
+where not exists (select 1 from questions q where q.prompt = v.prompt);
 
-COMMIT;
+-- ===== Tier 2 — nové otázky: dominance, submise, hranice, nejistota =====
+insert into questions (tier, kind, prompt, theme, intensity)
+select v.tier::question_tier, v.kind::question_kind, v.prompt, v.theme, v.intensity
+from (values
+  ('tier_2','yes_no','Je něco z BDSM, co tě láká, ale nejsi si jistý/á, jestli by se ti to ve skutečnosti líbilo?','bdsm',1),
+  ('tier_2','short_answer','Která praktika tě zároveň láká i trochu děsí? Co by ti pomohlo ji vyzkoušet v klidu?','bdsm',2),
+  ('tier_2','frequency_1_5','Jak moc tě vzrušuje představa, že v posteli rozhoduješ o všem ty? (1 = vůbec, 5 = hodně)','bdsm',2),
+  ('tier_2','frequency_1_5','Jak moc tě vzrušuje představa, že se úplně odevzdáš a rozhoduju já? (1 = vůbec, 5 = hodně)','bdsm',2),
+  ('tier_2','yes_no','Chtěl/a bys, abychom si domluvili stopku (safeword), i kdybychom ji nikdy nepoužili?','bdsm',1),
+  ('tier_2','yes_no','Líbilo by se ti nechat si zavázat oči a nevědět, co přijde dál?','bdsm',1),
+  ('tier_2','yes_no','Chtěl/a bys zkusit být připoutaný/á za ruce (pouta, šátek, pásek)?','bdsm',2),
+  ('tier_2','yes_no','Chtěl/a bys naopak připoutat ty mě?','bdsm',2),
+  ('tier_2','frequency_1_5','Jak moc se ti líbí plácnutí přes zadek? (1 = vůbec, 5 = klidně pořádně)','bdsm',2),
+  ('tier_2','yes_no','Vzrušuje tě, když ti v posteli říkám, co přesně máš udělat?','bdsm',2),
+  ('tier_2','yes_no','Vzrušuje tě prosit o to, co chceš, nebo si to muset "zasloužit"?','bdsm',2),
+  ('tier_2','yes_no','Lákalo by tě odpírání orgasmu — že ti (nebo já tobě) nedovolím vyvrcholit, dokud neřeknu?','bdsm',3),
+  ('tier_2','yes_no','Chtěl/a bys zkusit hru s teplotou — led, teplý vosk z masážní svíčky?','bdsm',2),
+  ('tier_2','yes_no','Líbila by se ti hra na pravidla a "tresty" na celý večer?','bdsm',3),
+  ('tier_2','yes_no','Přitahuje tě nosit (nebo vidět na mně) obojek, postroj nebo jiný symbol toho, kdo komu patří?','bdsm',3),
+  ('tier_2','frequency_1_5','Jak důležitá je pro tebe péče po akci — mazlení, deka, povídání (aftercare)? (1 = nepotřebuju, 5 = bez toho ne)','bdsm',1),
+  ('tier_2','short_answer','Co je tvoje tvrdé NE — věc, kterou nechceš zkoušet nikdy a za žádných okolností?','bdsm',1),
+  ('tier_2','yes_no','Střídal/a bys rád/a role — jednou vést, jindy se nechat vést?','bdsm',1),
+  ('tier_2','yes_no','Líbilo by se ti, kdybych ti přes den poslal/a "úkol", který máš splnit, než se uvidíme?','bdsm',2),
+  ('tier_2','short_answer','Kdybys mi měl/a na jeden večer napsat pravidla, která musím dodržet, jaká by byla první tři?','bdsm',2)
+) as v(tier, kind, prompt, theme, intensity)
+where not exists (select 1 from questions q where q.prompt = v.prompt);
+
+-- ===== Premium pack: Fantazie bez filtrů =====
+insert into questions (tier, kind, prompt, theme, intensity, pack)
+select v.tier::question_tier, v.kind::question_kind, v.prompt, v.theme, v.intensity, 'fantazie_bez_filtru'
+from (values
+  ('tier_2','short_answer','Jaká tvoje fantazie ti přijde tak divoká, že ses ji zatím bál/a vyslovit nahlas?','fantasy',3),
+  ('tier_2','yes_no','Vzrušuje tě představa, že bychom to spolu zkusili na nějakém riskantním místě, kde nás málem někdo přistihne?','fantasy',3),
+  ('tier_2','frequency_1_5','Jak často sníš o něčem, co jsme spolu ještě nikdy nezkusili? (1 = skoro nikdy, 5 = skoro pořád)','fantasy',2),
+  ('tier_2','yes_no','Lákalo by tě zahrát si na někoho úplně jiného — převzít roli, která ti normálně není vlastní?','fantasy',2),
+  ('tier_2','short_answer','Kdyby sis mohl/a splnit jednu erotickou fantazii bez jakýchkoli následků, co by to bylo?','fantasy',3),
+  ('tier_2','yes_no','Přitahuje tě představa, že bys mě (nebo sebe) nechal/a svázat?','bdsm',3),
+  ('tier_2','frequency_1_5','Jak moc tě vzrušuje pomyšlení na to být při tom sledován/a? (1 = vůbec, 5 = hodně)','fantasy',2),
+  ('tier_2','yes_no','Chtěl/a bys někdy zkusit hračku nebo pomůcku, o které ses zatím bál/a říct nahlas?','explicit',2),
+  ('tier_2','short_answer','Co je ta jedna věc, kterou bys ode mě v posteli chtěl/a slyšet nebo zažít mnohem častěji?','explicit',2),
+  ('tier_2','yes_no','Fantazíruješ někdy o tom, že bys převzal/a úplnou kontrolu nad tím, co se děje?','bdsm',3)
+) as v(tier, kind, prompt, theme, intensity)
+where not exists (select 1 from questions q where q.pack = 'fantazie_bez_filtru' and q.prompt = v.prompt);
+
+-- ===== Classify untagged tier_2 questions (theme + intensity) =====
+-- The original bank shipped without tags; the theme / intensity filters on the
+-- home page need them. Keyword-based, only touches rows that are still untagged.
+update questions set theme = case
+    when prompt ~* '(bdsm|sváz|svaz|pouta|spout|připout|dominan|submis|výprask|plácn|plácač|bič|obojk|obojek|vodítk|ovlád|kontrol|poslouch|poslušn|trest|dusi|choking|svork|cnc|otro[kc]|pohlavek|zaváza|poníž|rozkaz|kleč|pet play|edging|ruined|odevzd)' then 'bdsm'
+    when prompt ~* '(fantazi|představ|erotický sen|sníš|trojk|ve třech|swing|cizí|rol[ie]|kostým|převle|uniform|sledov|dívat|díval|natáč|fotím|veřejn|letadl|v lese|zrcadl|eskort|ex s námi|propustk)' then 'fantasy'
+    when prompt ~* '(spokojen|frekvenc|jak často|vyhovuje|chybí ti|iniciativ|předehr|libido|souhlasíš|důležit|komunik|říct si)' then 'compat'
+    else 'explicit' end
+where tier = 'tier_2' and theme is null;
+
+update questions set intensity = case
+    when prompt ~* '(anál|dusi|choking|cnc|znásiln|bič|svork|trojk|ve třech|swing|eskort|pet play|ruined|breeding|somnofil|otro[kc]|ponížen|sourozen|příbuzn|fist|zadku)' then 3
+    when prompt ~* '(spokojen|frekvenc|romant|polib|masáž|mazl|objet|svíč|souhlasíš|předehr|důležit|oblečení|prádl)' then 1
+    else 2 end
+where tier = 'tier_2' and intensity is null;
+
+commit;

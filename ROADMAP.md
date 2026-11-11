@@ -9,7 +9,7 @@
 | Funkce | Stav |
 |---|---|
 | Landing page s konfigurátorem (tier, počet otázek, email/anonym) | ✅ Hotovo |
-| Supabase backend (sessions, questions, answers, couples, users) | ✅ Hotovo |
+| Neon Postgres backend (sessions, questions, answers, couples, users) | ✅ Hotovo |
 | Quiz flow — Partner A odpovídá na otázky | ✅ Hotovo |
 | Invite Partner — kopírovatelný link + email pozvánka (Resend) | ✅ Hotovo |
 | Quiz flow — Partner B odpovídá přes unikátní odkaz | ✅ Hotovo |
@@ -18,7 +18,7 @@
 | Banka otázek (~50+ seedovaných, tier_1/tier_2, 3 typy) | ✅ Základ hotov |
 | Token-based přístup k session | ✅ Hotovo |
 
-**Tech stack:** Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Supabase (Postgres + RPC), Resend
+**Tech stack:** Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Neon (Postgres), Resend
 
 ---
 

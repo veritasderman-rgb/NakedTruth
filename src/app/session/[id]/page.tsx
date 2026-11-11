@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from "@/lib/supabase";
+import { getSql, isUuid } from "@/lib/db";
 import { joinSession } from "../../actions/session";
 import Link from "next/link";
 export const dynamic = 'force-dynamic';
@@ -40,18 +40,25 @@ export default async function SessionPage({
     return <ErrorCard title="Chybí přístupový token" message="Odkaz je neúplný. Zkontrolujte, že jste zkopírovali celý odkaz od partnera." />;
   }
 
-  const supabase = getSupabaseAdmin();
+  if (!isUuid(id)) {
+    return <ErrorCard title="Relace nenalezena" message="Tato relace neexistuje nebo vypršela. Zkuste vytvořit novou." />;
+  }
 
   try {
-    const { data: session, error: sessionError } = await supabase
-      .from("sessions")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const sql = getSql();
+    const [session] = await sql`select * from sessions where id = ${id}`;
 
-    if (sessionError || !session) {
+    if (!session) {
       return <ErrorCard title="Relace nenalezena" message="Tato relace neexistuje nebo vypršela. Zkuste vytvořit novou." />;
     }
+
+    // Session questions in order, shaped as { question_id, questions: {...} }.
+    const loadQuestions = () => sql`
+      select sq.question_id, to_jsonb(q) as questions
+      from session_questions sq
+      join questions q on q.id = sq.question_id
+      where sq.session_id = ${id}
+      order by sq.question_order`;
 
     let role: "partner_a" | "partner_b" | null = null;
     if (session.partner_a_access_token === token) {
@@ -76,19 +83,13 @@ export default async function SessionPage({
 
     // If both completed, show comparison
     if (session.status === "completed") {
-      const { data: questions } = await supabase
-        .from("session_questions")
-        .select("question_id, questions(*)")
-        .eq("session_id", id)
-        .order("question_order");
-
-      const { data: answers } = await supabase
-        .from("answers")
-        .select("*")
-        .eq("session_id", id);
+      const questions = await loadQuestions();
+      const answers = await sql`
+        select question_id, user_id, answer_yes_no, answer_frequency, answer_text
+        from answers where session_id = ${id}`;
 
       const myUserId = role === "partner_a" ? session.partner_a_user_id : session.partner_b_user_id;
-      return <ComparisonView session={session} questions={questions || []} answers={answers || []} myUserId={myUserId} />;
+      return <ComparisonView session={session} questions={questions} answers={answers} myUserId={myUserId} />;
     }
 
     // If I'm done but partner isn't, show invite/waiting
@@ -97,19 +98,8 @@ export default async function SessionPage({
     }
 
     // Otherwise, show questionnaire
-    const { data: sessionQuestions, error: questionsError } = await supabase
-      .from("session_questions")
-      .select("question_id, questions(*)")
-      .eq("session_id", id)
-      .order("question_order");
-
-    if (questionsError) {
-      return <ErrorCard title="Chyba načítání" message="Nepodařilo se načíst otázky. Zkuste obnovit stránku." />;
-    }
-
-    const validQuestions = (sessionQuestions || [])
-      .map(q => q.questions)
-      .filter(Boolean);
+    const sessionQuestions = await loadQuestions();
+    const validQuestions = sessionQuestions.map((q) => q.questions).filter(Boolean);
 
     if (validQuestions.length === 0) {
       return <ErrorCard title="Otázky chybí" message="Pro tuto relaci se nepodařilo načíst žádné otázky." />;

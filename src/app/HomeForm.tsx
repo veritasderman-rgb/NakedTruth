@@ -94,6 +94,9 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
         setLoading(false);
       }
     } catch (err: any) {
+      // A successful start redirects by throwing NEXT_REDIRECT — let it through.
+      if (typeof err?.digest === 'string' && err.digest.startsWith('NEXT_REDIRECT')) throw err;
+      if (err?.message === 'NEXT_REDIRECT') throw err;
       console.error("Failed to start session:", err);
       setError(err.message || "Něco se nepovedlo. Zkontrolujte připojení k databázi.");
       setLoading(false);
