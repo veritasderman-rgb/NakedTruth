@@ -155,3 +155,39 @@
     animation: none;
   }
 }
+
+/* ---------- Print (the detailed report is meant to be printed or saved as PDF) ---------- */
+@media print {
+  html.dark {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 8%;
+    --muted-foreground: 0 0% 32%;
+    color-scheme: light;
+  }
+  body {
+    background: #fff !important;
+  }
+  .glass,
+  .glass-primary {
+    background: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    border-color: #bbb !important;
+  }
+  .text-gradient {
+    background: none !important;
+    color: #000 !important;
+    -webkit-text-fill-color: #000;
+  }
+  /* Neon cup colours are unreadable on paper. */
+  article [style*="color"] {
+    color: #000 !important;
+  }
+  svg {
+    filter: none !important;
+  }
+  nav,
+  .brand-pill {
+    display: none !important;
+  }
+}

@@ -11,7 +11,11 @@ The whole site exists in Czech, English, German, French and Spanish: Kinkometr, 
 
 ## Payments
 
-Stripe Checkout, enabled by `STRIPE_SECRET_KEY`: the one-time premium unlock for the couples quiz (needs the webhook and `STRIPE_WEBHOOK_SECRET`) and a voluntary tip jar (`/api/tip`, no webhook needed).
+Stripe Checkout, enabled by `STRIPE_SECRET_KEY`:
+
+- **Detailed Kinkometr report** (`/kinkometr/rozbor/[id]`, 79 Kč / 3.49 €) — unlocked per result. The report page verifies the payment with Stripe on return, so it works without a webhook; the webhook unlocks it too if configured.
+- **Premium packs** for the couples quiz (29 Kč / 1.49 €) — needs the webhook and `STRIPE_WEBHOOK_SECRET`.
+- **Tip jar** (`/api/tip`) — no webhook needed.
 
 ## Run locally
 

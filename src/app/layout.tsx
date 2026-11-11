@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { DEFAULT_LOCALE, LOCALES, localePath } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
+import { appUrl } from "@/lib/app-url";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  metadataBase: new URL(appUrl()),
   title: "NakedTruth — Poznejte se upřímně",
   description: "Blind-comparison kvíz pro páry. Odpovězte na stejné otázky odděleně a porovnejte výsledky.",
   openGraph: {

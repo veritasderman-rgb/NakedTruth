@@ -1,6 +1,8 @@
 import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { getSql, isUuid } from '@/lib/db';
+import { unlockReport } from '@/lib/kink-store';
+import { REPORT_KIND } from '@/lib/stripe';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +33,14 @@ export async function POST(req: Request) {
     const productCode = session.metadata?.product_code || 'premium';
     const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : null;
 
-    if (isUuid(userId)) {
+    if (session.metadata?.kind === REPORT_KIND) {
+      // Detailed Kinkometr report: unlock the result the payment was made for.
+      if (session.payment_status === 'paid' && session.metadata.profile) {
+        await unlockReport(session.metadata.profile, paymentIntent).catch((e) => console.error('[webhook] failed to unlock report', e));
+      }
+    } else if (session.metadata?.kind === 'tip') {
+      // Tips unlock nothing.
+    } else if (isUuid(userId)) {
       try {
         await getSql()`
           insert into entitlements (user_id, product_code, source, stripe_payment_intent_id)

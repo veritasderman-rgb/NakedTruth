@@ -9,6 +9,7 @@ import { fmt, localePath } from "@/lib/i18n";
 import { CUPS, CUP_BY_KEY } from "@/lib/kink";
 import { getContent } from "@/lib/kink-content";
 import { getLocale } from "@/lib/locale";
+import { isAppUrlKnown } from "@/lib/app-url";
 import { getQuiz } from "@/lib/quiz-content";
 import { premiumPriceLabel } from "@/lib/stripe";
 
@@ -38,7 +39,7 @@ export default async function Home() {
 
   const missingVars = [];
   if (!isConfigured) missingVars.push("DATABASE_URL");
-  if (!process.env.NEXT_PUBLIC_APP_URL) missingVars.push("NEXT_PUBLIC_APP_URL");
+  if (!isAppUrlKnown()) missingVars.push("NEXT_PUBLIC_APP_URL");
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center px-5 py-6 text-center">
