@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { DEFAULT_LOCALE, LOCALES, LOCALE_NAMES, localePath, type Locale } from '@/lib/i18n';
 
@@ -10,12 +11,30 @@ export default function LangSwitch({ locale, label }: { locale: Locale; label: s
   const prefix = new RegExp(`^/(${LOCALES.filter((l) => l !== DEFAULT_LOCALE).join('|')})(?=/|$)`);
   const bare = pathname.replace(prefix, '') || '/';
 
+  // Carry the query along (an invite's ?partner=…, ?mode=…) so switching
+  // language does not turn an invited test into a solo one. Read after mount:
+  // the server render has no access to it here.
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete('lang');
+    params.delete('tip');
+    setQuery(params.toString());
+  }, [pathname]);
+
+  const hrefFor = (l: Locale) => {
+    const params = new URLSearchParams(query);
+    if (l === DEFAULT_LOCALE) params.set('lang', DEFAULT_LOCALE);
+    const qs = params.toString();
+    return `${localePath(l, bare)}${qs ? `?${qs}` : ''}`;
+  };
+
   return (
     <nav aria-label={label} className="flex flex-wrap items-center gap-1 text-[11px]">
       {LOCALES.map((l) => (
         <a
           key={l}
-          href={l === DEFAULT_LOCALE ? `${bare}?lang=${DEFAULT_LOCALE}` : localePath(l, bare)}
+          href={hrefFor(l)}
           hrefLang={l}
           lang={l}
           aria-current={l === locale ? 'true' : undefined}
