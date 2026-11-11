@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { track } from '@/lib/track';
 
 // Copies an app-relative link to the clipboard.
 export default function CopyLink({
@@ -18,6 +19,7 @@ export default function CopyLink({
   const [copied, setCopied] = useState(false);
 
   const handle = async () => {
+    track('invite_copied');
     const url = `${window.location.origin}${path}`;
     try {
       await navigator.clipboard.writeText(url);

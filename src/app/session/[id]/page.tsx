@@ -115,6 +115,7 @@ export default async function SessionPage({
         token={token}
         questions={validQuestions}
         t={t}
+        locale={locale}
       />
     );
   } catch (err: any) {

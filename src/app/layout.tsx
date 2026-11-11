@@ -3,6 +3,7 @@ import "./globals.css";
 import { DEFAULT_LOCALE, LOCALES, localePath } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { appUrl } from "@/lib/app-url";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl()),
@@ -30,7 +31,10 @@ export default async function RootLayout({
   const locale = await getLocale();
   return (
     <html lang={locale} className="dark">
-      <body>{children}</body>
+      <body>
+        {children}
+        <SiteFooter locale={locale} />
+      </body>
     </html>
   );
 }

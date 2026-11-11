@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { saveKinkProfile } from '../actions/kink';
+import { track } from '@/lib/track';
 import { fmt, localePath, type Locale } from '@/lib/i18n';
 import {
   ANSWER_VALUES,
@@ -97,6 +98,7 @@ export default function KinkTest({
       // Only send deeper answers for cups that are still selected.
       const keep = new Set([...round1, ...round2].map((q) => q.id));
       const clean = Object.fromEntries(Object.entries(answers).filter(([id]) => keep.has(id)));
+      track(inviteToken ? 'kink_saved_invited' : 'kink_saved');
       const { id, partnerToken } = await saveKinkProfile(mode, clean, {
         inviteToken,
         context: { single: single === true, lowDesire: lowDesire === true },
@@ -120,6 +122,7 @@ export default function KinkTest({
     }
     setIndex(0);
     if (stage === 'round1') {
+      track('kink_round1_done');
       const scored = scoreAnswers(mode, next);
       const cand = scored ? deepCandidates(scored.cups) : [];
       setDeepCups(cand.slice(0, DEEP_PRESELECT));
@@ -205,7 +208,12 @@ export default function KinkTest({
             onChange={(e) => setAdult(e.target.checked)}
             className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]"
           />
-          <span>{t.adult}</span>
+          <span>
+            {t.adult}{' '}
+            <a href={localePath(locale, '/soukromi')} target="_blank" rel="noopener" className="underline">
+              {t.privacyLink}
+            </a>
+          </span>
         </label>
 
         {!isConfigured && (
@@ -214,7 +222,7 @@ export default function KinkTest({
           </p>
         )}
 
-        <Button className="w-full" size="lg" disabled={!adult || !isConfigured} onClick={() => setStage('round1')}>
+        <Button className="w-full" size="lg" disabled={!adult || !isConfigured} onClick={() => { track('kink_start'); setStage('round1'); }}>
           {fmt(t.start, { n: round1.length })}
         </Button>
         <p className="text-center text-[11px] text-muted-foreground">
@@ -260,7 +268,7 @@ export default function KinkTest({
         </div>
 
         <div className="space-y-2">
-          <Button className="w-full" size="lg" disabled={deepCups.length === 0} onClick={() => { setIndex(0); setStage('round2'); }}>
+          <Button className="w-full" size="lg" disabled={deepCups.length === 0} onClick={() => { track('kink_deep_start'); setIndex(0); setStage('round2'); }}>
             {fmt(t.goDeeper, { n: deepCups.length * 3 })}
           </Button>
           <Button variant="outline" className="w-full" onClick={() => { setDeepCups([]); setStage('finish'); }}>

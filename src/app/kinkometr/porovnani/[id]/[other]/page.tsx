@@ -3,6 +3,7 @@ import Link from 'next/link';
 import KinkShell from '@/components/kink/Shell';
 import CupGlass from '@/components/kink/CupGlass';
 import Tip from '@/components/kink/Tip';
+import Track from '@/components/Track';
 import { fmt, localePath, plural } from '@/lib/i18n';
 import { getContent } from '@/lib/kink-content';
 import { getKinkProfile, getKinkProfileByInvite } from '@/lib/kink-store';
@@ -104,6 +105,7 @@ export default async function KinkComparePage({ params }: { params: Promise<{ id
 
   return (
     <KinkShell locale={locale} brand={t.brand} languageLabel={t.language}>
+      <Track name="kink_compare_view" />
       <div className="space-y-10">
         <header className="space-y-2 text-center">
           <p className="text-xs text-muted-foreground">{t.cmpKicker}</p>

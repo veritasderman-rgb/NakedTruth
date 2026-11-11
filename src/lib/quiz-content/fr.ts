@@ -76,6 +76,10 @@ export const fr: QuizContent = {
   sending: 'Envoi...',
   finishRound: 'Terminer la manche',
   nextQuestion: 'Question suivante',
+  consent: 'J’ai 18 ans ou plus et je consens expressément à ce que NakedTruth traite mes réponses sur ma relation et ma vie sexuelle et les montre à mon ou ma partenaire une fois que nous aurons tous deux terminé.',
+  privacyLink: 'Politique de confidentialité',
+  termsLink: 'Conditions générales',
+  waiver: 'Je souhaite accéder aux packs premium immédiatement et je reconnais perdre ainsi mon droit de rétractation de 14 jours.',
 
   // --- Invite / waiting
   doneTitle: 'Beau travail !',

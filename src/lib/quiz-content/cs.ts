@@ -74,6 +74,10 @@ const dict = {
   sending: 'Odesílám...',
   finishRound: 'Dokončit kolo',
   nextQuestion: 'Další otázka',
+  consent: 'Je mi 18 nebo víc a výslovně souhlasím, aby NakedTruth zpracoval mé odpovědi o vztahu a sexuálním životě a po dokončení je ukázal mému partnerovi.',
+  privacyLink: 'Zásady soukromí',
+  termsLink: 'Obchodní podmínky',
+  waiver: 'Chci balíčky zpřístupnit ihned a beru na vědomí, že tím ztrácím právo odstoupit od smlouvy do 14 dnů.',
 
   // --- Invite / waiting
   doneTitle: 'Skvělá práce!',

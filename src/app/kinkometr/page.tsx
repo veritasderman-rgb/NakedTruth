@@ -7,6 +7,7 @@ import { getContent } from '@/lib/kink-content';
 import { getKinkProfileByInvite } from '@/lib/kink-store';
 import { getLocale } from '@/lib/locale';
 import KinkTest, { type TestContent } from './KinkTest';
+import Track from '@/components/Track';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,7 @@ export default async function KinkometrPage({
 
   return (
     <KinkShell locale={locale} brand={content.ui.brand} languageLabel={content.ui.language}>
+      <Track name="kink_intro_view" />
       <KinkTest
         locale={locale}
         content={test}

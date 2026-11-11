@@ -4,6 +4,8 @@ import KinkShell from '@/components/kink/Shell';
 import CupGlass from '@/components/kink/CupGlass';
 import CopyLink from '@/components/kink/CopyLink';
 import Tip from '@/components/kink/Tip';
+import DeleteResult from '@/components/kink/DeleteResult';
+import Track from '@/components/Track';
 import ReportOffer from '@/components/kink/ReportOffer';
 import { getReport } from '@/lib/report-content';
 import { reportPriceLabel } from '@/lib/stripe';
@@ -104,6 +106,7 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
 
   return (
     <KinkShell locale={locale} brand={t.brand} languageLabel={t.language}>
+      <Track name="kink_result_view" />
       <div className="space-y-10">
         <header className="space-y-3">
           <p className="text-xs text-muted-foreground">
@@ -319,6 +322,7 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
             <Link href={href('/kinkometr')} className="text-xs text-muted-foreground underline">
               {t.retake}
             </Link>
+            <DeleteResult id={profile.id} locale={locale} t={t} />
           </div>
         </footer>
       </div>

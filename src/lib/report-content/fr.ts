@@ -109,6 +109,8 @@ const ui: ReportContent['ui'] = {
   item5: 'Impression ou enregistrement en PDF',
   buy: 'Débloquer pour {price}',
   oneTime: 'Paiement unique, sans abonnement et sans inscription. Valable à vie pour ce résultat.',
+  waiver: 'Je souhaite accéder au rapport immédiatement et je reconnais perdre ainsi mon droit de rétractation de 14 jours.',
+  termsLink: 'Conditions générales',
   redirecting: 'Redirection vers le paiement…',
   unavailable: 'Les paiements ne sont pas disponibles pour le moment. Réessaie plus tard.',
   failed: 'Impossible de lancer le paiement. Réessaie.',

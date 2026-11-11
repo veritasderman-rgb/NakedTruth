@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Locale } from '@/lib/i18n';
+import { track } from '@/lib/track';
 
 type Tier = 's' | 'm' | 'l';
 
@@ -24,12 +25,14 @@ export default function TipJar({
   useEffect(() => {
     const tip = new URLSearchParams(window.location.search).get('tip');
     if (tip === 'thanks' || tip === 'cancelled') setNotice(tip);
+    if (tip === 'thanks') track('tip_paid');
   }, []);
 
   const price = (tier: Tier) =>
     new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(amounts[tier]);
 
   const pay = async (tier: Tier) => {
+    track('tip_click');
     setBusy(tier);
     setNotice(null);
     try {

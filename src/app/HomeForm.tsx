@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { startSession } from "./actions/session";
 
-import { fmt, type Locale } from "@/lib/i18n";
+import { fmt, localePath, type Locale } from "@/lib/i18n";
+import { track } from "@/lib/track";
 import type { QuizContent } from "@/lib/quiz-content";
 
 type TierPref = 'vanilla' | 'spicy' | 'mixed';
@@ -67,6 +68,7 @@ export default function HomeForm({
   const [themes, setThemes] = useState<string[]>([]); // empty = all themes
   const [selectedPack, setSelectedPack] = useState<string | null>(null);
   const [paywall, setPaywall] = useState<{ userId: string } | null>(null);
+  const [waiver, setWaiver] = useState(false);
   const [premiumNotice, setPremiumNotice] = useState<'success' | 'cancelled' | null>(null);
 
   const premiumMode = selectedPack !== null;
@@ -95,6 +97,7 @@ export default function HomeForm({
   };
 
   const handleStart = async (emailToUse?: string) => {
+    track('quiz_start');
     setLoading(true);
     setError(null);
     try {
@@ -119,6 +122,7 @@ export default function HomeForm({
   };
 
   const startCheckout = async (userId: string) => {
+    track('premium_buy_click');
     setLoading(true);
     setError(null);
     try {
@@ -329,7 +333,16 @@ export default function HomeForm({
             <p className="text-[11px] text-muted-foreground">
               {fmt(t.paywallText, { price: premiumPrice })}
             </p>
-            <Button className="w-full" onClick={() => startCheckout(paywall.userId)} disabled={loading}>
+            <label className="flex cursor-pointer items-start gap-2 text-left text-[11px] text-muted-foreground">
+              <input type="checkbox" checked={waiver} onChange={(e) => setWaiver(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" />
+              <span>
+                {t.waiver}{' '}
+                <a href={localePath(locale, '/podminky')} target="_blank" rel="noopener" className="underline">
+                  {t.termsLink}
+                </a>
+              </span>
+            </label>
+            <Button className="w-full" onClick={() => startCheckout(paywall.userId)} disabled={loading || !waiver}>
               {loading ? t.redirecting : fmt(t.pay, { price: premiumPrice })}
             </Button>
             <button

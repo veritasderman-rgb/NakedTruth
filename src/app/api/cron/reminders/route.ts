@@ -49,5 +49,23 @@ export async function GET(req: Request) {
     await getSql()`update sessions set reminder_sent_at = now() where id = ${s.id}`;
   }
 
-  return Response.json({ processed: candidates.length, sent });
+  // Retention promised in the privacy policy: nothing older than 24 months.
+  // Deleting a couple cascades to its sessions, questions and answers.
+  let purged = 0;
+  try {
+    const sql = getSql();
+    const a = await sql`delete from kink_profiles where created_at < now() - interval '24 months' returning id`;
+    const b = await sql`delete from couples where created_at < now() - interval '24 months' returning id`;
+    await sql`
+      delete from users u where u.created_at < now() - interval '24 months'
+        and not exists (select 1 from couple_members m where m.user_id = u.id)
+        and not exists (select 1 from sessions s where u.id in (s.created_by_user_id, s.partner_a_user_id, s.partner_b_user_id))
+        and not exists (select 1 from couples c where c.created_by_user_id = u.id)
+        and not exists (select 1 from entitlements e where e.user_id = u.id)`;
+    purged = a.length + b.length;
+  } catch (error) {
+    console.error('[cron] retention purge failed', error);
+  }
+
+  return Response.json({ purged, processed: candidates.length, sent });
 }

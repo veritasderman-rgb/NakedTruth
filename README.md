@@ -17,6 +17,13 @@ Stripe Checkout, enabled by `STRIPE_SECRET_KEY`:
 - **Premium packs** for the couples quiz (29 Kč / 1.49 €) — needs the webhook and `STRIPE_WEBHOOK_SECRET`.
 - **Tip jar** (`/api/tip`) — no webhook needed.
 
+## Legal pages, consent and measurement
+
+- `/podminky` (terms) and `/soukromi` (privacy policy), Czech and English; other languages read the English text. **Fill in `src/lib/operator.ts`** — until then both pages show a warning that the operator's details are missing.
+- Answers are data about sex life, so each test asks for explicit consent before the first answer, and each purchase for consent to immediate delivery of digital content.
+- A result can be erased by its owner ("Delete my result"); the daily cron removes everything older than 24 months.
+- Usage is measured with anonymous daily counters in the `events` table (no cookies, no IP, no visitor id). Overview at `/stats?key=<STATS_KEY>`; without `STATS_KEY` the page does not exist.
+
 ## Run locally
 
 1. Install dependencies:

@@ -75,6 +75,10 @@ export const de: QuizContent = {
   sending: 'Wird gesendet...',
   finishRound: 'Runde abschließen',
   nextQuestion: 'Nächste Frage',
+  consent: 'Ich bin 18 oder älter und willige ausdrücklich ein, dass NakedTruth meine Antworten zu Beziehung und Sexualleben verarbeitet und sie meinem Gegenüber zeigt, sobald wir beide fertig sind.',
+  privacyLink: 'Datenschutzerklärung',
+  termsLink: 'AGB',
+  waiver: 'Ich möchte, dass die Premium-Pakete sofort freigeschaltet werden, und mir ist bekannt, dass ich damit mein 14-tägiges Widerrufsrecht verliere.',
 
   // --- Invite / waiting
   doneTitle: 'Super gemacht!',
