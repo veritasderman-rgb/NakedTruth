@@ -1,4 +1,6 @@
 import { Resend } from 'resend';
+import type { Locale } from '@/lib/i18n';
+import { getQuiz } from '@/lib/quiz-content';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -11,7 +13,7 @@ function isConfigured(): boolean {
 }
 
 // Shared, minimal email shell. `cta` is optional.
-function layout(opts: { heading: string; body: string; cta?: { label: string; href: string } }): string {
+function layout(opts: { heading: string; body: string; footer: string; cta?: { label: string; href: string } }): string {
   const button = opts.cta
     ? `<a href="${opts.cta.href}" style="display:inline-block;margin-top:8px;padding:12px 28px;background-color:#F55229;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">${opts.cta.label}</a>`
     : '';
@@ -21,7 +23,7 @@ function layout(opts: { heading: string; body: string; cta?: { label: string; hr
       <h1 style="font-size:22px;margin:0 0 12px;">${opts.heading}</h1>
       <div style="font-size:15px;line-height:1.6;color:#404040;">${opts.body}</div>
       ${button}
-      <p style="font-size:11px;color:#a3a3a3;margin-top:32px;">Poznejte se upřímně a bez zábran. Vaše odpovědi zůstávají soukromé, dokud nebudete oba hotovi.</p>
+      <p style="font-size:11px;color:#a3a3a3;margin-top:32px;">${opts.footer}</p>
     </div>
   `;
 }
@@ -40,38 +42,23 @@ async function send(to: string, subject: string, html: string): Promise<void> {
   }
 }
 
-export async function sendInviteEmail(email: string, inviteLink: string): Promise<void> {
+// Each e-mail is written in the language the session was started in.
+type Kind = 'invite' | 'reminder' | 'results';
+
+async function sendKind(kind: Kind, email: string, link: string, locale: Locale): Promise<void> {
+  const t = getQuiz(locale);
   await send(
     email,
-    'Partner vás pozval do NakedTruth',
+    t[`${kind}Subject`],
     layout({
-      heading: 'Váš partner na vás čeká',
-      body: `<p>Druhá půlka dokončila svou část a teď je řada na vás. Odpovězte na stejné otázky — vaše odpovědi uvidíte společně, až budete oba hotovi.</p>`,
-      cta: { label: 'Začít odpovídat', href: inviteLink },
+      heading: t[`${kind}Heading`],
+      body: `<p>${t[`${kind}Body`]}</p>`,
+      footer: t.mailFooter,
+      cta: { label: t[`${kind}Cta`], href: link },
     })
   );
 }
 
-export async function sendReminderEmail(email: string, sessionLink: string): Promise<void> {
-  await send(
-    email,
-    'Připomínka: váš partner stále čeká 💬',
-    layout({
-      heading: 'Nezapomněli jste na něco?',
-      body: `<p>Váš partner už svou část NakedTruth dokončil a čeká, až odpovíte i vy. Zabere to jen pár minut a pak uvidíte výsledky společně.</p>`,
-      cta: { label: 'Dokončit odpovědi', href: sessionLink },
-    })
-  );
-}
-
-export async function sendResultsReadyEmail(email: string, resultsLink: string): Promise<void> {
-  await send(
-    email,
-    'Vaše výsledky jsou připravené 🎉',
-    layout({
-      heading: 'Oba jste hotovi!',
-      body: `<p>Skvělé — oba jste dokončili kolo. Pojďte se společně podívat, kde se shodujete a kde vás čeká překvapení.</p>`,
-      cta: { label: 'Zobrazit výsledky', href: resultsLink },
-    })
-  );
-}
+export const sendInviteEmail = (email: string, link: string, locale: Locale) => sendKind('invite', email, link, locale);
+export const sendReminderEmail = (email: string, link: string, locale: Locale) => sendKind('reminder', email, link, locale);
+export const sendResultsReadyEmail = (email: string, link: string, locale: Locale) => sendKind('results', email, link, locale);

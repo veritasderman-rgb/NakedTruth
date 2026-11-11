@@ -1,5 +1,6 @@
 import { getSql } from '@/lib/db';
 import { sendReminderEmail } from '@/lib/mail';
+import { DEFAULT_LOCALE, isLocale, localePath } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   let candidates;
   try {
     candidates = await getSql()`
-      select s.id, s.partner_b_access_token, u.email
+      select s.id, s.partner_b_access_token, s.locale, u.email
       from sessions s
       join users u on u.id = s.partner_b_user_id
       where s.partner_a_completed_at < now() - interval '24 hours'
@@ -39,7 +40,8 @@ export async function GET(req: Request) {
   let sent = 0;
   for (const s of candidates) {
     if (s.email) {
-      await sendReminderEmail(s.email, `${baseUrl}/session/${s.id}?token=${s.partner_b_access_token}`);
+      const locale = isLocale(s.locale) ? s.locale : DEFAULT_LOCALE;
+      await sendReminderEmail(s.email, `${baseUrl}${localePath(locale, `/session/${s.id}?token=${s.partner_b_access_token}`)}`, locale);
       sent++;
     }
     // Mark processed regardless so anonymous (no-email) partner B sessions aren't

@@ -8,8 +8,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { submitAnswers } from "../../actions/session";
+import { fmt } from "@/lib/i18n";
+import type { QuizContent } from "@/lib/quiz-content";
 
-export default function QuestionnaireForm({ sessionId, token, questions }: { sessionId: string, token: string, questions: any[] }) {
+export default function QuestionnaireForm({ sessionId, token, questions, t }: { sessionId: string, token: string, questions: any[], t: QuizContent }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<any[]>([]);
   const [currentValue, setCurrentValue] = useState<string | null>(null);
@@ -28,8 +30,8 @@ export default function QuestionnaireForm({ sessionId, token, questions }: { ses
         cleanPrompt: prompt.replace(match[0], '').trim(),
       };
     }
-    return { low: 'Nikdy', high: 'Velmi často', cleanPrompt: prompt };
-  }, []);
+    return { low: t.scaleLow, high: t.scaleHigh, cleanPrompt: prompt };
+  }, [t]);
 
   const scaleLabels = currentQuestion.kind === 'frequency_1_5'
     ? parseScaleLabels(currentQuestion.prompt)
@@ -70,7 +72,7 @@ export default function QuestionnaireForm({ sessionId, token, questions }: { ses
       window.location.reload();
     } catch (err: any) {
       console.error(err);
-      setError("Nepodařilo se odeslat odpovědi. Zkuste to znovu.");
+      setError(t.submitError);
       setSubmitting(false);
     }
   };
@@ -82,7 +84,7 @@ export default function QuestionnaireForm({ sessionId, token, questions }: { ses
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12">
       <div className="w-full space-y-4">
         <div className="flex justify-between items-end">
-          <span className="text-xs font-medium text-muted-foreground">Otázka {currentIndex + 1} z {questions.length}</span>
+          <span className="text-xs font-medium text-muted-foreground">{fmt(t.questionOf, { i: currentIndex + 1, n: questions.length })}</span>
           <span className="text-xs font-medium text-muted-foreground">{Math.round(progress)}%</span>
         </div>
         <Progress value={progress} className="h-2" />
@@ -98,11 +100,11 @@ export default function QuestionnaireForm({ sessionId, token, questions }: { ses
               <RadioGroup value={currentValue || ""} onValueChange={setCurrentValue} className="flex flex-col space-y-3">
                 <Label htmlFor="yes" className="flex items-center space-x-2 rounded-lg border p-4 hover:bg-accent cursor-pointer transition-colors">
                   <RadioGroupItem value="true" id="yes" />
-                  <span className="font-medium">Ano</span>
+                  <span className="font-medium">{t.yes}</span>
                 </Label>
                 <Label htmlFor="no" className="flex items-center space-x-2 rounded-lg border p-4 hover:bg-accent cursor-pointer transition-colors">
                   <RadioGroupItem value="false" id="no" />
-                  <span className="font-medium">Ne</span>
+                  <span className="font-medium">{t.no}</span>
                 </Label>
               </RadioGroup>
             )}
@@ -122,7 +124,7 @@ export default function QuestionnaireForm({ sessionId, token, questions }: { ses
 
             {currentQuestion.kind === 'short_answer' && (
               <Textarea
-                placeholder="Napište svou odpověď..."
+                placeholder={t.answerPlaceholder}
                 value={currentValue || ''}
                 onChange={(e) => setCurrentValue(e.target.value)}
                 className="min-h-[150px] resize-none"
@@ -143,7 +145,7 @@ export default function QuestionnaireForm({ sessionId, token, questions }: { ses
                 onClick={handleBack}
                 disabled={submitting}
               >
-                Zpět
+                {t.back}
               </Button>
             )}
             <Button
@@ -152,8 +154,8 @@ export default function QuestionnaireForm({ sessionId, token, questions }: { ses
               disabled={!canProceed || submitting}
             >
               {isLastQuestion
-                ? (submitting ? "Odesílám..." : "Dokončit kolo")
-                : "Další otázka"}
+                ? (submitting ? t.sending : t.finishRound)
+                : t.nextQuestion}
             </Button>
           </CardFooter>
         </Card>

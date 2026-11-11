@@ -61,6 +61,15 @@ create table if not exists questions (
 create index if not exists idx_questions_tier_active on questions (tier, is_active);
 create index if not exists idx_questions_pack on questions (pack) where pack is not null;
 
+-- Translations of question prompts. Czech lives in questions.prompt; a missing
+-- row falls back to it. Seeded from db/seed_question_translations.sql.
+create table if not exists question_translations (
+  question_id integer not null references questions(id) on delete cascade,
+  locale text not null,
+  prompt text not null,
+  primary key (question_id, locale)
+);
+
 -- ========= SESSIONS =========
 create table if not exists sessions (
   id uuid primary key default gen_random_uuid(),
@@ -87,6 +96,9 @@ create table if not exists sessions (
   unique (partner_a_access_token),
   unique (partner_b_access_token)
 );
+
+-- Language the session was started in: used for e-mails and links sent later.
+alter table sessions add column if not exists locale text not null default 'cs';
 
 create index if not exists idx_sessions_couple_created_at on sessions (couple_id, created_at desc);
 

@@ -1,16 +1,20 @@
 import { ImageResponse } from 'next/og';
+import { DEFAULT_LOCALE, fmt, isLocale } from '@/lib/i18n';
+import { getQuiz } from '@/lib/quiz-content';
 
 export const runtime = 'edge';
 
-// Shareable result image (1200×630). Rendered text is kept diacritic-free so it
-// renders reliably with the default font; the full Czech copy lives on the HTML
-// share page. Values come from query params so the route stays stateless and
-// cacheable: ?p=<percent>&m=<matchCount>&t=<total>.
+// Shareable result image (1200×630). The default font has no Czech diacritics,
+// so the Czech og* strings are written without them; the full copy lives on the
+// HTML share page. Values come from query params so the route stays stateless
+// and cacheable: ?p=<percent>&m=<matchCount>&t=<total>&l=<locale>.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const percent = clampInt(searchParams.get('p'), 0, 100, 0);
   const match = clampInt(searchParams.get('m'), 0, 9999, 0);
   const total = clampInt(searchParams.get('t'), 0, 9999, 0);
+  const l = searchParams.get('l');
+  const q = getQuiz(isLocale(l) ? l : DEFAULT_LOCALE);
 
   return new ImageResponse(
     (
@@ -22,7 +26,7 @@ export async function GET(req: Request) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundImage: 'linear-gradient(135deg, #F55229 0%, #E11D48 100%)',
+          backgroundImage: 'linear-gradient(135deg, #ff3d8e 0%, #b05cff 100%)',
           color: '#ffffff',
           fontFamily: 'sans-serif',
           padding: '64px',
@@ -38,7 +42,7 @@ export async function GET(req: Request) {
         </div>
 
         <div style={{ display: 'flex', fontSize: 44, fontWeight: 600, marginTop: 8, opacity: 0.95 }}>
-          {total > 0 ? `Shoda ${match} z ${total}` : 'Nase shoda'}
+          {total > 0 ? fmt(q.ogMatch, { m: match, t: total }) : q.ogOurs}
         </div>
 
         <div
@@ -52,7 +56,7 @@ export async function GET(req: Request) {
             padding: '16px 36px',
           }}
         >
-          Zkus to taky &#8594;
+          {q.ogCta} &#8594;
         </div>
       </div>
     ),

@@ -18,9 +18,10 @@ export type QuestionRow = {
   prompt: string;
 };
 
+export type CategoryKey = 'vanilla' | 'explicit' | 'fantasy' | 'bdsm' | 'compat' | 'intimacy';
+
 export type CategoryScore = {
-  key: string;
-  label: string;
+  key: CategoryKey;
   matchCount: number;
   total: number;
   percent: number;
@@ -48,21 +49,18 @@ export function isMatch(valA: string | null, valB: string | null, kind: string):
   return valA !== null && valB !== null && valA === valB;
 }
 
-// Human-readable category for a question. tier_1 is a single relationship
-// bucket; tier_2 is split by theme.
-export function categoryFor(q: QuestionRow): { key: string; label: string } {
-  if (q.tier === 'tier_1') return { key: 'vanilla', label: 'Vztahy & soužití' };
+// Category of a question. tier_1 is a single relationship bucket; tier_2 is
+// split by theme. Labels live in the quiz dictionary (cat<Key>).
+export function categoryFor(q: QuestionRow): CategoryKey {
+  if (q.tier === 'tier_1') return 'vanilla';
   switch (q.theme) {
     case 'explicit':
-      return { key: 'explicit', label: 'Bez obalu' };
     case 'fantasy':
-      return { key: 'fantasy', label: 'Fantazie' };
     case 'bdsm':
-      return { key: 'bdsm', label: 'Dominance & submise' };
     case 'compat':
-      return { key: 'compat', label: 'Sladění' };
+      return q.theme;
     default:
-      return { key: 'intimacy', label: 'Pod peřinou' };
+      return 'intimacy';
   }
 }
 
@@ -78,7 +76,7 @@ export function computeScore(
   partnerAId: string,
   partnerBId: string
 ): ScoreResult {
-  const byCategory = new Map<string, CategoryScore>();
+  const byCategory = new Map<CategoryKey, CategoryScore>();
   let matchCount = 0;
   let total = 0;
 
@@ -96,11 +94,10 @@ export function computeScore(
     const matched = isMatch(valA, valB, q.kind);
     const cat = categoryFor(q);
 
-    const entry =
-      byCategory.get(cat.key) ?? { key: cat.key, label: cat.label, matchCount: 0, total: 0, percent: 0 };
+    const entry = byCategory.get(cat) ?? { key: cat, matchCount: 0, total: 0, percent: 0 };
     entry.total += 1;
     if (matched) entry.matchCount += 1;
-    byCategory.set(cat.key, entry);
+    byCategory.set(cat, entry);
 
     total += 1;
     if (matched) matchCount += 1;
@@ -113,10 +110,17 @@ export function computeScore(
   return { matchCount, total, percent: pct(matchCount, total), categories };
 }
 
-// Shared copy for the headline label so the UI, share page and OG image agree.
-export function matchLabel(percent: number): { text: string; color: string } {
-  if (percent >= 80) return { text: 'Jste na stejné vlně', color: '#16a34a' };
-  if (percent >= 60) return { text: 'Solidní základ, je na čem stavět', color: '#059669' };
-  if (percent >= 40) return { text: 'Máte o čem mluvit', color: '#d97706' };
-  return { text: 'Překvapení čeká — na to se podívejte', color: '#ea580c' };
+// Headline level for a match score (3 = best) and its colour, so the UI, the
+// share page and the share image agree. Wording lives in the quiz dictionary
+// (level0 … level3).
+export function matchLevel(percent: number): { level: 0 | 1 | 2 | 3; color: string } {
+  if (percent >= 80) return { level: 3, color: '#34d399' };
+  if (percent >= 60) return { level: 2, color: '#2dd4bf' };
+  if (percent >= 40) return { level: 1, color: '#fbbf24' };
+  return { level: 0, color: '#fb923c' };
+}
+
+// Capitalised key for dictionary lookups: 'bdsm' -> 'catBdsm'.
+export function categoryLabelKey(key: CategoryKey): `cat${Capitalize<CategoryKey>}` {
+  return `cat${key[0].toUpperCase()}${key.slice(1)}` as `cat${Capitalize<CategoryKey>}`;
 }

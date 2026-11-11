@@ -1,4 +1,6 @@
-import { stripe, PREMIUM_PRICE_MINOR, PREMIUM_PRODUCT_CODE } from '@/lib/stripe';
+import { stripe, PREMIUM_PRODUCT_CODE, premiumPricing } from '@/lib/stripe';
+import { DEFAULT_LOCALE, isLocale, localePath } from '@/lib/i18n';
+import { getQuiz } from '@/lib/quiz-content';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +10,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   if (!stripe) return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
 
-  const { userId, email } = await req.json().catch(() => ({ userId: undefined, email: undefined }));
+  const { userId, email, locale: rawLocale } = await req.json().catch(() => ({ userId: undefined, email: undefined, locale: undefined }));
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
+  const { currency, minor } = premiumPricing(locale);
   if (!userId) return Response.json({ error: 'missing_user' }, { status: 400 });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.get('host')}`;
@@ -17,13 +21,14 @@ export async function POST(req: Request) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      locale,
       line_items: [
         {
           quantity: 1,
           price_data: {
-            currency: 'czk',
-            unit_amount: PREMIUM_PRICE_MINOR,
-            product_data: { name: 'NakedTruth Premium — odemčení prémiových balíčků' },
+            currency,
+            unit_amount: minor,
+            product_data: { name: getQuiz(locale).premiumProduct },
           },
         },
       ],
@@ -31,8 +36,8 @@ export async function POST(req: Request) {
       metadata,
       // Mirror metadata onto the PaymentIntent for easier reconciliation.
       payment_intent_data: { metadata },
-      success_url: `${baseUrl}/?premium=success`,
-      cancel_url: `${baseUrl}/?premium=cancelled`,
+      success_url: `${baseUrl}${localePath(locale, '/')}?premium=success`,
+      cancel_url: `${baseUrl}${localePath(locale, '/')}?premium=cancelled`,
     });
 
     return Response.json({ url: session.url });

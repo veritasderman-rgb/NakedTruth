@@ -3,6 +3,24 @@
 
 begin;
 
+-- ===== Corrections to earlier wording =====
+-- Six prompts were garbled, ambiguous or had an inverted scale. Databases seeded
+-- before the fix are updated in place here; without this the corrected prompts
+-- below would be inserted as new rows next to the old ones.
+update questions set prompt = 'Jak moc věříš tomu, že umím hospodařit s penězi? (1 = jsi chodící katastrofa, 5 = věřím ti na 100 %)'
+  where prompt = 'Jak moc věříš tomu, že umím hospodařit s penězi? (1 = věřím ti na 100 %, 5 = jsi chodící katastrofa)';
+update questions set prompt = 'Jakou konkrétní nadávku bych ti měl/a říct přesně v momentě, kdy do mě poprvé vnikáš (nebo kdy já vnikám do tebe)?'
+  where prompt = 'Jakou konkrétní nadávku bych ti měl/a říct přesně v momentě, kdy do mě poprvé vnikáš / kdy přijímám vniknutí?';
+update questions set prompt = 'Kdybys mi měl/a přidělit vulgární nebo ponižující titul či přezdívku, kterou bys mě v posteli oslovoval/a, jaká by to byla?'
+  where prompt = 'Kdybys mi měl/a přidělit nějaký vulgární nebo ponižující titul/přezdívku, kterou bych tě musel/a v posteli oslovovat, jaká by to byla?';
+update questions set prompt = 'Láká tě nosit pod oblečením tajně hračku — vibrační kalhotky nebo anální kolík — třeba i celý den v práci? (1 = nepohodlné, 5 = chci být tajně nadržený/á celý den)'
+  where prompt = 'Láká tě zkoušet hrátky s vycpávkami, kolíky na kalhotkách nebo nosit butt plug celý den v práci? (1 = nepohodlné, 5 = chci být tajně nadržený/á celý den)';
+update questions set prompt = 'Jakou naprosto konkrétní, sprostou větu bys chtěl/a, abych zařval/a přesně ve chvíli, kdy se udělám (nebo kdy vyvrcholíš ty)?'
+  where prompt = 'Jakou naprosto konkrétní, sprostou větu bys chtěl/a, abych zařval/a těsně v momentě, kdy dělám udělám/kdy vyvrcholíš?';
+update questions set prompt = 'Lákalo by tě odpírání orgasmu — že ti nedovolím vyvrcholit, dokud neřeknu (nebo ty mně)?'
+  where prompt = 'Lákalo by tě odpírání orgasmu — že ti (nebo já tobě) nedovolím vyvrcholit, dokud neřeknu?';
+
+
 -- ===== Tier 1 — vztahy & soužití =====
 insert into questions (tier, kind, prompt)
 select v.tier::question_tier, v.kind::question_kind, v.prompt
@@ -51,7 +69,7 @@ from (values
   ('tier_1', 'yes_no', 'Smazal/a jsi někdy konverzaci s někým na chatu dřív, než bych ji mohl/a vidět?'),
   ('tier_1', 'yes_no', 'Myslíš si, že bychom měli jít do párové terapie, i když zrovna neřešíme obrovskou krizi?'),
   ('tier_1', 'short_answer', 'Kdybys mi mohl/a zakázat jednu věc, kterou dělám ve volném čase, co by to bylo?'),
-  ('tier_1', 'frequency_1_5', 'Jak moc věříš tomu, že umím hospodařit s penězi? (1 = věřím ti na 100 %, 5 = jsi chodící katastrofa)'),
+  ('tier_1', 'frequency_1_5', 'Jak moc věříš tomu, že umím hospodařit s penězi? (1 = jsi chodící katastrofa, 5 = věřím ti na 100 %)'),
   ('tier_1', 'yes_no', 'Měl/a jsi někdy pocit, že jsem tě ztrapnil/a před tvými přáteli nebo rodinou?'),
   ('tier_1', 'short_answer', 'Co nejtěžšího jsi musel/a v životě překonat a měl/a jsi pocit, že jsem tě v tom dostatečně nepodpořil/a?'),
   ('tier_1', 'frequency_1_5', 'Jak moc důležitá je pro tebe svatba a papír na náš vztah? (1 = nepotřebuju to, 5 = je to pro mě zásadní cíl)'),
@@ -231,7 +249,7 @@ from (values
   ('tier_2', 'yes_no', 'Vadí ti pomyšlení na to, že bych ti při vyvrcholení nastříkal/a na obličej (cum on face)?'),
   ('tier_2', 'yes_no', 'Lákalo by tě zaplatit si společně profesionálního/profesionální eskort/prostitutku pro sex ve třech (abychom do toho nepletli emoce a kamarády)?'),
   ('tier_2', 'frequency_1_5', 'Jak moc tě přitahuje foot fetish (vzrušení z chodidel, masírování, sání prstů na nohou)? (1 = nohy jsou fuj, 5 = to je moje úchylka)'),
-  ('tier_2', 'short_answer', 'Kdybys mi měl/a přidělit nějaký vulgární nebo ponižující titul/přezdívku, kterou bych tě musel/a v posteli oslovovat, jaká by to byla?'),
+  ('tier_2', 'short_answer', 'Kdybys mi měl/a přidělit vulgární nebo ponižující titul či přezdívku, kterou bys mě v posteli oslovoval/a, jaká by to byla?'),
   ('tier_2', 'yes_no', 'Chceš zkusit natočit naše domácí video na mobil s tím, že si ho pošleme do práce v době oběda?'),
   ('tier_2', 'frequency_1_5', 'Láká tě fantazie ''znásilnění'' po vzájemném souhlasu (consensual non-consent / CNC), kdy se bráníš, ale já tě stejně ''donutím''? (1 = z toho mám hrůzu, 5 = obrovská fantazie)'),
   ('tier_2', 'yes_no', 'Když máš chuť na sex, ale bojíš se odmítnutí, potlačíš to v sobě a raději jdeš spát nebo se uspokojíš sám/sama?'),
@@ -256,9 +274,9 @@ from (values
   ('tier_2', 'frequency_1_5', 'Jak moc si libuješ v myšlence, že bys mi plně odevzdal/a kontrolu nad svými financemi a osobním životem výměnou za to, že budu tvůj Pán/Paní (Total Power Exchange)? (1 = ani náhodou, chci svobodu, 5 = je to můj ultimátní fetiš)'),
   ('tier_2', 'short_answer', 'Pokud bys mohl/a zkusit sex s mým/tvojí nejlepším kamarádem/kamarádkou bez toho, abych to kdy zjistil/a, udělal/a bys to?'),
   ('tier_2', 'yes_no', 'Baví tě, když během orálního sexu schválně dělám ''deep throat'' tak hluboko, až se mi zvedá žaludek / dávíš mě?'),
-  ('tier_2', 'frequency_1_5', 'Láká tě zkoušet hrátky s vycpávkami, kolíky na kalhotkách nebo nosit butt plug celý den v práci? (1 = nepohodlné, 5 = chci být tajně nadržený/á celý den)'),
+  ('tier_2', 'frequency_1_5', 'Láká tě nosit pod oblečením tajně hračku — vibrační kalhotky nebo anální kolík — třeba i celý den v práci? (1 = nepohodlné, 5 = chci být tajně nadržený/á celý den)'),
   ('tier_2', 'yes_no', 'Kdybys věděl/a, že to stoprocentně neudělá zlou krev, chtěl/a bys sdílet mou/svou ex s námi v jedné posteli?'),
-  ('tier_2', 'short_answer', 'Jakou konkrétní nadávku bych ti měl/a říct přesně v momentě, kdy do mě poprvé vnikáš / kdy přijímám vniknutí?'),
+  ('tier_2', 'short_answer', 'Jakou konkrétní nadávku bych ti měl/a říct přesně v momentě, kdy do mě poprvé vnikáš (nebo kdy já vnikám do tebe)?'),
   ('tier_2', 'frequency_1_5', 'Jak moc se ti líbí představa, že bys hrál/a roli ''služky'' nebo ''sluhy'', který musí splnit jakýkoliv můj rozkaz dříve, než mě může uspokojit? (1 = nechci se ponižovat, 5 = miluju tu dynamiku)'),
   ('tier_2', 'yes_no', 'Stěžoval/a jsi si někdy svým kamarádům na to, jaký jsem (nebo nejsem) v posteli?'),
   ('tier_2', 'yes_no', 'Chtěl/a bys zkusit sex v opuštěné budově, v lese mimo cesty nebo v nějaké zřícenině, kde je reálné riziko zranění a tmy?'),
@@ -286,7 +304,7 @@ from (values
   ('tier_2', 'yes_no', 'Předstíral/a jsi někdy orgasmus prostě proto, že už tě bolela ruka, pusa nebo tělo a chtěl/a jsi, ať už je konec?'),
   ('tier_2', 'frequency_1_5', 'Jak moc toužíš po tom, abych tě při orálním sexu opravdu silně tahal/a za vlasy a držel/a ti hlavu? (1 = ne, bolí to, 5 = bez toho to není ono)'),
   ('tier_2', 'yes_no', 'Kývl/a bys na víkendovou ''propustku'', pokud bychom jeli na dovolenou každý zvlášť (ty s partou, já s partou)?'),
-  ('tier_2', 'short_answer', 'Jakou naprosto konkrétní, sprostou větu bys chtěl/a, abych zařval/a těsně v momentě, kdy dělám udělám/kdy vyvrcholíš?'),
+  ('tier_2', 'short_answer', 'Jakou naprosto konkrétní, sprostou větu bys chtěl/a, abych zařval/a přesně ve chvíli, kdy se udělám (nebo kdy vyvrcholíš ty)?'),
   ('tier_2', 'yes_no', 'Ochutnal/a jsi někdy záměrně (např. při líbání po orálu) svoje vlastní tělní tekutiny a líbilo se ti to?'),
   ('tier_2', 'frequency_1_5', 'Jak moc by tě vzrušovalo koukat se na mě, jak uspokojuji někoho jiného? (1 = zlomilo by mi to srdce, 5 = je to obří fetiš)'),
   ('tier_2', 'yes_no', 'Měl/a jsi někdy byť i letmou sexuální myšlenku na někoho z mých sourozenců nebo blízkých příbuzných?'),
@@ -332,7 +350,7 @@ from (values
   ('tier_2','frequency_1_5','Jak moc se ti líbí plácnutí přes zadek? (1 = vůbec, 5 = klidně pořádně)','bdsm',2),
   ('tier_2','yes_no','Vzrušuje tě, když ti v posteli říkám, co přesně máš udělat?','bdsm',2),
   ('tier_2','yes_no','Vzrušuje tě prosit o to, co chceš, nebo si to muset "zasloužit"?','bdsm',2),
-  ('tier_2','yes_no','Lákalo by tě odpírání orgasmu — že ti (nebo já tobě) nedovolím vyvrcholit, dokud neřeknu?','bdsm',3),
+  ('tier_2','yes_no','Lákalo by tě odpírání orgasmu — že ti nedovolím vyvrcholit, dokud neřeknu (nebo ty mně)?','bdsm',3),
   ('tier_2','yes_no','Chtěl/a bys zkusit hru s teplotou — led, teplý vosk z masážní svíčky?','bdsm',2),
   ('tier_2','yes_no','Líbila by se ti hra na pravidla a "tresty" na celý večer?','bdsm',3),
   ('tier_2','yes_no','Přitahuje tě nosit (nebo vidět na mně) obojek, postroj nebo jiný symbol toho, kdo komu patří?','bdsm',3),
