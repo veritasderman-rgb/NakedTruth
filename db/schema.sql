@@ -349,17 +349,27 @@ end;
 $$;
 
 -- ========= KINKOMETR: solo kink profile ("poháry") =========
--- Anonymous. `id` is the unguessable private link to the result. `partner_of`
--- links a profile filled in from somebody's invite, enabling the comparison.
+-- Anonymous. `id` is the private link to the owner's result and is never shown
+-- to anyone else. `invite_token` is what the owner shares: it lets a partner
+-- take the test and see the mutual comparison, but not the owner's result.
+-- `partner_of` links a profile filled in from somebody's invite.
 create table if not exists kink_profiles (
   id uuid primary key default gen_random_uuid(),
   partner_of uuid references kink_profiles(id) on delete set null,
   mode text not null default 'full',
   -- { "<questionId>": 0..4 }
   answers jsonb not null,
-  -- { "<cupKey>": { "fill": 0..100, "unsure": n, "count": n } }
+  -- { "<cupKey>": { "fill": 0..100, "unsure": n, "count": n, "depth"?, "give"?, "receive"? } }
   cups jsonb not null,
   created_at timestamptz not null default now()
 );
 
+alter table kink_profiles
+  add column if not exists invite_token uuid not null default gen_random_uuid(),
+  -- { "single": bool, "lowDesire": bool } — asked at the start, never scored
+  add column if not exists context jsonb not null default '{}'::jsonb,
+  -- free text: "what is missing here?" — visible only to the owner
+  add column if not exists missing text;
+
+create unique index if not exists uq_kink_profiles_invite_token on kink_profiles (invite_token);
 create index if not exists idx_kink_profiles_partner_of on kink_profiles (partner_of) where partner_of is not null;

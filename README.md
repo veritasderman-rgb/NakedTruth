@@ -2,7 +2,7 @@
 
 Testy a porovnání pro páry i jednotlivce. Next.js 15 (App Router), React 19, TypeScript, Tailwind, Neon Postgres.
 
-- **Kinkometr** (`/kinkometr`) — anonymní solo test. 12 oblastí („pohárů“) se plní podle odpovědí; výsledek nabídne aktivity, polohy, místa a tipy, kde potkat podobně naladěné lidi. Poháry jde porovnat s partnerem přes pozvánku.
+- **Kinkometr** (`/kinkometr`) — anonymní solo test. 23 oblastí („pohárů“) v pěti skupinách se plní podle odpovědí. První kolo je krátké a mírné, druhé jde u vybraných pohárů do hloubky a měří i směr (dávat / přijímat). Výsledek nabídne aktivity, polohy, místa a tipy, kde potkat podobně naladěné lidi. Poháry jde porovnat s partnerem přes pozvánku; porovnání ukáže jen to, na čem se oba shodnou.
 - **Párový kvíz naslepo** (`/`) — oba partneři odpoví zvlášť na stejné otázky, odpovědi se odhalí až po dokončení obou.
 
 ## Run locally
