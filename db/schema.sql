@@ -381,7 +381,10 @@ alter table kink_profiles
   -- { "single": bool, "lowDesire": bool } — asked at the start, never scored
   add column if not exists context jsonb not null default '{}'::jsonb,
   -- free text: "what is missing here?" — visible only to the owner
-  add column if not exists missing text;
+  add column if not exists missing text,
+  -- paid detailed report: when it was unlocked and by which Stripe payment
+  add column if not exists report_unlocked_at timestamptz,
+  add column if not exists report_payment text;
 
 create unique index if not exists uq_kink_profiles_invite_token on kink_profiles (invite_token);
 create index if not exists idx_kink_profiles_partner_of on kink_profiles (partner_of) where partner_of is not null;

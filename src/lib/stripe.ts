@@ -19,6 +19,18 @@ export function premiumPriceLabel(locale: Locale): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: minor % 100 === 0 ? 0 : 2 }).format(minor / 100);
 }
 
+// Detailed Kinkometr report, unlocked per result: 79 Kč / 3.49 €.
+export const REPORT_KIND = 'report';
+
+export function reportPricing(locale: Locale): { currency: 'czk' | 'eur'; minor: number } {
+  return locale === 'cs' ? { currency: 'czk', minor: 7900 } : { currency: 'eur', minor: 349 };
+}
+
+export function reportPriceLabel(locale: Locale): string {
+  const { currency, minor } = reportPricing(locale);
+  return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: minor % 100 === 0 ? 0 : 2 }).format(minor / 100);
+}
+
 // Voluntary "buy the author a coffee" tips. Three fixed tiers; Czech visitors
 // pay in CZK, everybody else in EUR. Amounts are in major units.
 export type TipTier = 's' | 'm' | 'l';

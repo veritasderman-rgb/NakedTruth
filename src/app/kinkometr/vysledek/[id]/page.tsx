@@ -4,6 +4,9 @@ import KinkShell from '@/components/kink/Shell';
 import CupGlass from '@/components/kink/CupGlass';
 import CopyLink from '@/components/kink/CopyLink';
 import Tip from '@/components/kink/Tip';
+import ReportOffer from '@/components/kink/ReportOffer';
+import { getReport } from '@/lib/report-content';
+import { reportPriceLabel } from '@/lib/stripe';
 import { fmt, localePath, plural } from '@/lib/i18n';
 import { getContent } from '@/lib/kink-content';
 import { getInvitedProfiles, getKinkProfile } from '@/lib/kink-store';
@@ -183,6 +186,15 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
             <p className="mt-2 text-[11px] text-muted-foreground">{t.ownCupNote}</p>
           </section>
         )}
+
+        <ReportOffer
+          id={profile.id}
+          locale={locale}
+          price={reportPriceLabel(locale)}
+          unlocked={profile.reportUnlocked}
+          reportPath={href(`/kinkometr/rozbor/${profile.id}`)}
+          t={getReport(locale).ui}
+        />
 
         {/* Partner comparison */}
         <section className="glass-primary space-y-3 rounded-2xl p-4">
