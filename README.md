@@ -7,7 +7,7 @@ Testy a porovnání pro páry i jednotlivce. Next.js 15 (App Router), React 19, 
 
 ## Languages
 
-Kinkometr and the landing page exist in Czech, English, German, French and Spanish. The blind couples quiz (question bank, emails) is Czech only for now, so it is shown only on the Czech site.
+The whole site exists in Czech, English, German, French and Spanish: Kinkometr, the blind couples quiz (interface, 330 questions, e-mails) and the share page. Czech is the source language. Wording lives in `src/lib/kink-content/` and `src/lib/quiz-content/`; question translations are in `db/seed_question_translations.sql` and are loaded in the viewer's language, so two partners can answer the same session in different languages.
 
 ## Payments
 

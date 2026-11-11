@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:setup": "node scripts/db-apply.mjs db/schema.sql db/seed_questions.sql"
+    "db:setup": "node scripts/db-apply.mjs db/schema.sql db/seed_questions.sql db/seed_question_translations.sql"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
