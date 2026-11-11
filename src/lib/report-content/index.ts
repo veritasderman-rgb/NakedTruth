@@ -2,9 +2,10 @@ import type { Locale } from '@/lib/i18n';
 import { cs, type ReportContent } from './cs';
 import { en } from './en';
 import { de } from './de';
+import { fr } from './fr';
+import { es } from './es';
 
-// Translations are added per locale; a locale without one falls back to Czech.
-const CONTENT: Partial<Record<Locale, ReportContent>> = { cs, en, de };
+const CONTENT: Record<Locale, ReportContent> = { cs, en, de, fr, es };
 
 export function getReport(locale: Locale): ReportContent {
   return CONTENT[locale] ?? cs;
