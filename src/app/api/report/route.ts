@@ -27,6 +27,10 @@ export async function POST(req: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       locale,
+      // Cards only: they settle at once, so the return page can verify and
+      // unlock without waiting for a webhook. Delayed methods (bank debits,
+      // vouchers) would leave a paying customer behind the paywall.
+      payment_method_types: ['card'],
       line_items: [
         {
           quantity: 1,

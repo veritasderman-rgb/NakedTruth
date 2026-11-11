@@ -27,7 +27,9 @@ export async function POST(req: Request) {
     return Response.json({ error: 'invalid_signature' }, { status: 400 });
   }
 
-  if (event.type === 'checkout.session.completed') {
+  // async_payment_succeeded covers delayed payment methods, where the session
+  // completes unpaid and the money arrives later.
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.user_id;
     const productCode = session.metadata?.product_code || 'premium';
@@ -40,6 +42,8 @@ export async function POST(req: Request) {
       }
     } else if (session.metadata?.kind === 'tip') {
       // Tips unlock nothing.
+    } else if (session.payment_status === 'unpaid') {
+      // A delayed payment that has not arrived yet: wait for the async event.
     } else if (isUuid(userId)) {
       try {
         await getSql()`
