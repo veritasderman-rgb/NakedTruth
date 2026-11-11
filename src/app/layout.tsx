@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { DEFAULT_LOCALE, LOCALES, localePath } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
@@ -10,15 +12,23 @@ export const metadata: Metadata = {
     description: "Blind-comparison kvíz pro páry. Odpovězte na stejné otázky odděleně a porovnejte výsledky.",
     type: "website",
   },
+  // Language versions of the landing page, for search engines.
+  alternates: {
+    languages: {
+      ...Object.fromEntries(LOCALES.map((l) => [l, localePath(l, "/")])),
+      "x-default": localePath(DEFAULT_LOCALE, "/"),
+    },
+  },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
   return (
-    <html lang="cs">
+    <html lang={locale} className="dark">
       <body>{children}</body>
     </html>
   );

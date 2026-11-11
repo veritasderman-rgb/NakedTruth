@@ -77,7 +77,7 @@ export default function InvitePartner({ sessionId, session, role, tokenB }: { se
             <div className="flex items-center space-x-2">
               <Input value={inviteLink} readOnly className="flex-grow bg-muted text-xs" />
               <Button size="icon" variant="outline" onClick={copyLink}>
-                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
           </div>
@@ -85,7 +85,7 @@ export default function InvitePartner({ sessionId, session, role, tokenB }: { se
           {/* Share buttons */}
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" className="h-11" onClick={shareWhatsApp}>
-              <MessageCircle className="h-4 w-4 mr-2 text-green-600" />
+              <MessageCircle className="h-4 w-4 mr-2 text-emerald-400" />
               <span className="text-sm">WhatsApp</span>
             </Button>
             {canShare ? (

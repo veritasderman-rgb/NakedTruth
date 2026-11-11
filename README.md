@@ -5,6 +5,14 @@ Testy a porovnání pro páry i jednotlivce. Next.js 15 (App Router), React 19, 
 - **Kinkometr** (`/kinkometr`) — anonymní solo test. 23 oblastí („pohárů“) v pěti skupinách se plní podle odpovědí. První kolo je krátké a mírné, druhé jde u vybraných pohárů do hloubky a měří i směr (dávat / přijímat). Výsledek nabídne aktivity, polohy, místa a tipy, kde potkat podobně naladěné lidi. Poháry jde porovnat s partnerem přes pozvánku; porovnání ukáže jen to, na čem se oba shodnou.
 - **Párový kvíz naslepo** (`/`) — oba partneři odpoví zvlášť na stejné otázky, odpovědi se odhalí až po dokončení obou.
 
+## Languages
+
+Kinkometr and the landing page exist in Czech, English, German, French and Spanish. The blind couples quiz (question bank, emails) is Czech only for now, so it is shown only on the Czech site.
+
+## Payments
+
+Stripe Checkout, enabled by `STRIPE_SECRET_KEY`: the one-time premium unlock for the couples quiz (needs the webhook and `STRIPE_WEBHOOK_SECRET`) and a voluntary tip jar (`/api/tip`, no webhook needed).
+
 ## Run locally
 
 1. Install dependencies:
@@ -27,5 +35,7 @@ Testy a porovnání pro páry i jednotlivce. Next.js 15 (App Router), React 19, 
 - `src/app/kinkometr` - Kinkometr test, result and comparison pages
 - `src/components/ui` - Shadcn-compatible UI primitives
 - `src/lib/db.ts` - Neon client (`getSql()`), server-side only
-- `src/lib/kink.ts` - Kinkometr cups, questions, scoring and recommendations
+- `src/lib/kink.ts` - Kinkometr structure and scoring (language-neutral)
+- `src/lib/kink-content/` - all Kinkometr wording, one file per language (`cs` is the source)
+- `src/lib/i18n.ts`, `src/middleware.ts` - locales: Czech at the root, `/en`, `/de`, `/fr`, `/es` as prefixes
 - `db/schema.sql`, `db/seed_questions.sql` - database schema and question bank

@@ -26,26 +26,28 @@
     --radius: 0.75rem;
   }
 
+  /* The site is dark-only; the light tokens above remain as a fallback. */
   .dark {
-    --background: 0 0% 3.9%;
+    --background: 264 38% 5%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
+    --card: 264 30% 8%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
+    --popover: 264 30% 8%;
     --popover-foreground: 0 0% 98%;
-    --primary: 12 91% 56%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 14.9%;
+    --primary: 338 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 264 20% 16%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
+    --muted: 264 20% 16%;
+    --muted-foreground: 264 12% 70%;
+    --accent: 264 20% 16%;
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 12 91% 56%;
+    --border: 264 18% 20%;
+    --input: 264 18% 24%;
+    --ring: 338 100% 60%;
+    color-scheme: dark;
   }
 }
 
@@ -55,6 +57,16 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    min-height: 100vh;
+    /* Neon haze: magenta from the top, cyan from the bottom corner, over a faint grid. */
+    background-image:
+      radial-gradient(60rem 32rem at 50% -12%, rgba(255, 46, 166, 0.22), transparent 60%),
+      radial-gradient(44rem 28rem at 105% 105%, rgba(0, 213, 255, 0.14), transparent 60%),
+      radial-gradient(36rem 24rem at -10% 60%, rgba(176, 92, 255, 0.12), transparent 60%),
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: auto, auto, auto, 32px 32px, 32px 32px;
+    background-attachment: fixed;
   }
 }
 
@@ -81,4 +93,65 @@
 
 .slide-in-from-bottom-4 {
   animation-name: slide-in-from-bottom-4;
+}
+
+/* ---------- Neon building blocks ---------- */
+@layer components {
+  /* Frosted panel */
+  .glass {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(10px);
+  }
+
+  /* Highlighted panel with a magenta-to-cyan edge glow */
+  .glass-primary {
+    border: 1px solid rgba(255, 61, 142, 0.35);
+    background:
+      radial-gradient(28rem 14rem at 85% -30%, rgba(255, 46, 166, 0.22), transparent 60%),
+      radial-gradient(20rem 12rem at 0% 130%, rgba(0, 213, 255, 0.14), transparent 60%),
+      rgba(255, 255, 255, 0.04);
+    box-shadow: 0 0 40px -12px rgba(255, 46, 166, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+  }
+
+  .text-gradient {
+    background: linear-gradient(100deg, #fff 10%, #ff9ecb 45%, #ff3d8e 70%, #b05cff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Primary call to action */
+  .btn-glow {
+    color: #fff;
+    background: linear-gradient(100deg, #ff3d8e, #ff2ea6 45%, #b05cff);
+    box-shadow: 0 0 24px -4px rgba(255, 46, 166, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+  }
+  .btn-glow:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 0 32px -2px rgba(255, 46, 166, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+  .btn-glow:active {
+    transform: translateY(1px);
+  }
+
+  .brand-pill {
+    display: inline-flex;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 61, 142, 0.4);
+    background: rgba(255, 61, 142, 0.12);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #ff7ab0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none;
+  }
 }

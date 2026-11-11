@@ -4,21 +4,34 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { saveKinkProfile } from '../actions/kink';
+import { fmt, localePath, type Locale } from '@/lib/i18n';
 import {
-  ANSWER_OPTIONS,
+  ANSWER_VALUES,
   CUP_BY_KEY,
-  GROUPS,
+  GROUP_KEYS,
   MISSING_MAX,
-  MODES,
+  MODE_KEYS,
+  MODE_MINUTES,
+  UNSURE_VALUE,
   cupsFor,
   deepCandidates,
   deepQuestionsFor,
   questionsFor,
   scoreAnswers,
   type CupKey,
+  type GroupKey,
   type KinkMode,
   type KinkQuestion,
 } from '@/lib/kink';
+
+// The slice of the locale content the test needs in the browser.
+export type TestContent = {
+  ui: Record<string, string>;
+  groups: Record<GroupKey, { label: string; desc: string }>;
+  modes: Record<KinkMode, { label: string; desc: string }>;
+  answers: string[];
+  cups: Record<CupKey, { label: string; desc: string; base: string[]; deep: string[] }>;
+};
 
 type Stage = 'intro' | 'round1' | 'offer' | 'round2' | 'finish';
 
@@ -41,17 +54,22 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 }
 
 export default function KinkTest({
+  locale,
+  content,
   initialMode,
   lockedMode,
   inviteToken,
   isConfigured,
 }: {
+  locale: Locale;
+  content: TestContent;
   initialMode: KinkMode;
   lockedMode: boolean;
   inviteToken: string | null;
   isConfigured: boolean;
 }) {
   const router = useRouter();
+  const t = content.ui;
   const [mode, setMode] = useState<KinkMode>(initialMode);
   const [adult, setAdult] = useState(false);
   const [single, setSingle] = useState<boolean | null>(null);
@@ -84,10 +102,10 @@ export default function KinkTest({
         context: { single: single === true, lowDesire: lowDesire === true },
         missing,
       });
-      router.push(partnerToken ? `/kinkometr/porovnani/${id}/${partnerToken}` : `/kinkometr/vysledek/${id}`);
+      router.push(localePath(locale, partnerToken ? `/kinkometr/porovnani/${id}/${partnerToken}` : `/kinkometr/vysledek/${id}`));
     } catch (err: any) {
       console.error('Failed to save kink profile:', err);
-      setError('Výsledek se nepodařilo uložit. Zkuste to prosím znovu.');
+      setError(t.saveError);
       setSaving(false);
     }
   };
@@ -118,27 +136,20 @@ export default function KinkTest({
       <div className="space-y-7">
         <div className="space-y-3">
           <h1 className="text-balance text-3xl font-semibold tracking-tight">
-            {inviteToken ? 'Partner/ka tě zve k porovnání pohárů' : 'Jak plné máš poháry?'}
+            {inviteToken ? t.introTitleInvite : t.introTitle}
           </h1>
-          <p className="text-pretty text-sm text-muted-foreground">
-            {inviteToken
-              ? 'Odpověz na stejné otázky. Hned potom uvidíte jen to, na čem se shodnete: poháry, které chcete oba, a ty, kde aspoň jeden váhá. Co jeden z vás nechce, zůstane skryté — a nikdo se nedozví, kdo to byl.'
-              : 'Každá oblast — od něhy po BDSM — je jeden pohár. První kolo je krátké a mírné. U pohárů, které tě zaujmou, pak můžeš jít hlouběji. Na konci dostaneš tipy na aktivity, polohy, místa i kde potkat podobně naladěné lidi.'}
-          </p>
+          <p className="text-pretty text-sm text-muted-foreground">{inviteToken ? t.introLeadInvite : t.introLead}</p>
         </div>
 
-        <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 text-sm">
-          <p className="font-semibold">Nevíš? To je taky odpověď.</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            U každé otázky můžeš zvolit „Nevím“ — takový pohár označíme jako neprozkoumaný a poradíme, jak to
-            v klidu zjistit. A když ti něco nic neříká, je to stejně dobrý výsledek jako plný pohár.
-          </p>
+        <div className="glass rounded-xl p-4 text-sm">
+          <p className="font-semibold">{t.unsureTitle}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t.unsureText}</p>
         </div>
 
         {!lockedMode && (
           <div className="space-y-2">
-            <p className="ml-1 text-xs font-medium text-muted-foreground">Vyber si test</p>
-            {(Object.keys(MODES) as KinkMode[]).map((m) => (
+            <p className="ml-1 text-xs font-medium text-muted-foreground">{t.pickTest}</p>
+            {MODE_KEYS.map((m) => (
               <button
                 key={m}
                 type="button"
@@ -149,23 +160,23 @@ export default function KinkTest({
                 }`}
               >
                 <span className="flex items-baseline justify-between gap-3">
-                  <span className={`text-sm font-semibold ${mode === m ? 'text-primary' : ''}`}>{MODES[m].label}</span>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">~{MODES[m].minutes} min</span>
+                  <span className={`text-sm font-semibold ${mode === m ? 'text-primary' : ''}`}>{content.modes[m].label}</span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{fmt(t.minutes, { n: MODE_MINUTES[m] })}</span>
                 </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">{MODES[m].desc}</span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">{fmt(content.modes[m].desc, { n: cupsFor(m).length })}</span>
               </button>
             ))}
           </div>
         )}
 
         <div className="space-y-2">
-          {GROUPS.filter((g) => cups.some((c) => c.group === g.key)).map((g) => (
-            <div key={g.key}>
-              <p className="text-[11px] font-medium text-muted-foreground">{g.label}</p>
+          {GROUP_KEYS.filter((g) => cups.some((c) => c.group === g)).map((g) => (
+            <div key={g}>
+              <p className="text-[11px] font-medium text-muted-foreground">{content.groups[g].label}</p>
               <div className="mt-1 flex flex-wrap gap-1.5">
-                {cups.filter((c) => c.group === g.key).map((c) => (
+                {cups.filter((c) => c.group === g).map((c) => (
                   <span key={c.key} className="rounded-full border px-2 py-0.5 text-[11px]" style={{ borderColor: `${c.color}88`, color: c.color }}>
-                    {c.label}
+                    {content.cups[c.key].label}
                   </span>
                 ))}
               </div>
@@ -175,15 +186,15 @@ export default function KinkTest({
 
         <div className="space-y-3">
           <p className="ml-1 text-xs font-medium text-muted-foreground">
-            O tobě <span className="font-normal opacity-70">(nepovinné — jen přizpůsobí texty)</span>
+            {t.aboutYou} <span className="font-normal opacity-70">{t.aboutYouHint}</span>
           </p>
           <div className="flex flex-wrap gap-2">
-            <Chip active={single === false} onClick={() => setSingle(single === false ? null : false)}>Mám partnera/ku</Chip>
-            <Chip active={single === true} onClick={() => setSingle(single === true ? null : true)}>Jsem sám/sama</Chip>
+            <Chip active={single === false} onClick={() => setSingle(single === false ? null : false)}>{t.hasPartner}</Chip>
+            <Chip active={single === true} onClick={() => setSingle(single === true ? null : true)}>{t.isSingle}</Chip>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Chip active={lowDesire === false} onClick={() => setLowDesire(lowDesire === false ? null : false)}>Sex je pro mě důležitý</Chip>
-            <Chip active={lowDesire === true} onClick={() => setLowDesire(lowDesire === true ? null : true)}>Sex pro mě moc důležitý není</Chip>
+            <Chip active={lowDesire === false} onClick={() => setLowDesire(lowDesire === false ? null : false)}>{t.sexImportant}</Chip>
+            <Chip active={lowDesire === true} onClick={() => setLowDesire(lowDesire === true ? null : true)}>{t.sexNotImportant}</Chip>
           </div>
         </div>
 
@@ -194,20 +205,20 @@ export default function KinkTest({
             onChange={(e) => setAdult(e.target.checked)}
             className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]"
           />
-          <span>Je mi 18 nebo víc a chci vidět otevřený obsah o sexu.</span>
+          <span>{t.adult}</span>
         </label>
 
         {!isConfigured && (
           <p className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-xs text-yellow-200">
-            Chybí konfigurace databáze (DATABASE_URL) — výsledek nepůjde uložit.
+            {t.dbMissing}
           </p>
         )}
 
         <Button className="w-full" size="lg" disabled={!adult || !isConfigured} onClick={() => setStage('round1')}>
-          Začít ({round1.length} otázek)
+          {fmt(t.start, { n: round1.length })}
         </Button>
         <p className="text-center text-[11px] text-muted-foreground">
-          Anonymně, bez registrace. {single === true ? 'Otázky mluví o partnerovi — představ si někoho, s kým by ti bylo dobře.' : 'Výsledek uvidí jen ten, kdo má tvůj soukromý odkaz.'}
+          {t.footAnon} {single === true ? t.footSingle : t.footPrivate}
         </p>
       </div>
     );
@@ -220,12 +231,9 @@ export default function KinkTest({
     return (
       <div className="space-y-6">
         <div className="space-y-2">
-          <p className="text-[11px] text-muted-foreground">První kolo hotovo</p>
-          <h2 className="text-balance text-2xl font-semibold tracking-tight">Chceš jít u některých pohárů hlouběji?</h2>
-          <p className="text-sm text-muted-foreground">
-            Tyhle tě zaujaly. Druhé kolo má ostřejší otázky a zjistí i to, na které straně chceš být.
-            Vyber, co tě zajímá — nebo to přeskoč.
-          </p>
+          <p className="text-[11px] text-muted-foreground">{t.round1Done}</p>
+          <h2 className="text-balance text-2xl font-semibold tracking-tight">{t.offerTitle}</h2>
+          <p className="text-sm text-muted-foreground">{t.offerLead}</p>
         </div>
 
         <div className="grid gap-2">
@@ -242,8 +250,8 @@ export default function KinkTest({
                 style={{ borderColor: active ? cup.color : 'hsl(var(--muted))', backgroundColor: active ? `${cup.color}18` : undefined }}
               >
                 <span>
-                  <span className="block text-sm font-semibold" style={{ color: cup.color }}>{cup.label}</span>
-                  <span className="block text-[11px] text-muted-foreground">{cup.desc}</span>
+                  <span className="block text-sm font-semibold" style={{ color: cup.color }}>{content.cups[key].label}</span>
+                  <span className="block text-[11px] text-muted-foreground">{content.cups[key].desc}</span>
                 </span>
                 <span aria-hidden className="text-sm">{active ? '✓' : '+'}</span>
               </button>
@@ -253,10 +261,10 @@ export default function KinkTest({
 
         <div className="space-y-2">
           <Button className="w-full" size="lg" disabled={deepCups.length === 0} onClick={() => { setIndex(0); setStage('round2'); }}>
-            Jít hlouběji ({deepCups.length * 3} otázek)
+            {fmt(t.goDeeper, { n: deepCups.length * 3 })}
           </Button>
           <Button variant="outline" className="w-full" onClick={() => { setDeepCups([]); setStage('finish'); }}>
-            Přeskočit, stačí mi to
+            {t.skip}
           </Button>
         </div>
       </div>
@@ -268,21 +276,18 @@ export default function KinkTest({
     return (
       <div className="space-y-6">
         <div className="space-y-2">
-          <h2 className="text-balance text-2xl font-semibold tracking-tight">Chybí ti tu něco?</h2>
-          <p className="text-sm text-muted-foreground">
-            Žádný test nepokryje všechno. Jestli tě vzrušuje něco, na co jsme se nezeptali, napiš si to sem —
-            uvidíš to jen ty u svého výsledku. Nepovinné.
-          </p>
+          <h2 className="text-balance text-2xl font-semibold tracking-tight">{t.missingTitle}</h2>
+          <p className="text-sm text-muted-foreground">{t.missingLead}</p>
         </div>
         <textarea
           value={missing}
           onChange={(e) => setMissing(e.target.value.slice(0, MISSING_MAX))}
           rows={3}
-          placeholder="Třeba: vůně, hlas, konkrétní fantazie…"
+          placeholder={t.missingPlaceholder}
           className="w-full rounded-xl border bg-transparent p-3 text-sm outline-none focus:border-primary"
         />
         <Button className="w-full" size="lg" disabled={saving} onClick={submit}>
-          {saving ? 'Plním poháry…' : 'Ukázat moje poháry'}
+          {saving ? t.saving : t.showCups}
         </Button>
         {error && <p className="rounded-md bg-destructive/20 p-3 text-sm text-red-200">{error}</p>}
       </div>
@@ -300,10 +305,10 @@ export default function KinkTest({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
           <span>
-            {stage === 'round2' ? 'Hlouběji · ' : ''}
+            {stage === 'round2' ? `${t.deeper} · ` : ''}
             <span data-testid="counter">{index + 1} / {questions.length}</span>
           </span>
-          <span style={{ color: cup.color }}>{cup.label}</span>
+          <span data-testid="cup" style={{ color: cup.color }}>{content.cups[q.cup].label}</span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
           <div
@@ -314,22 +319,23 @@ export default function KinkTest({
       </div>
 
       <h2 key={q.id} className="animate-in fade-in min-h-[5.5rem] text-balance text-xl font-semibold leading-snug">
-        {q.text}
+        {content.cups[q.cup][q.round][q.index]}
       </h2>
 
       <div className="grid gap-2">
-        {ANSWER_OPTIONS.map((opt) => {
-          const selected = answers[q.id] === opt.value;
+        {ANSWER_VALUES.map((value) => {
+          const selected = answers[q.id] === value;
           return (
             <button
-              key={opt.value}
+              key={value}
               type="button"
-              onClick={() => answer(questions, opt.value)}
+              data-value={value}
+              onClick={() => answer(questions, value)}
               className={`rounded-xl border-2 px-4 py-3 text-left text-sm font-medium transition-all ${
-                selected ? 'border-primary bg-primary/15 text-primary' : 'border-muted hover:border-muted-foreground/50'
-              } ${opt.value === 2 ? 'border-dashed' : ''}`}
+                selected ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 bg-white/[0.03] hover:border-white/40'
+              } ${value === UNSURE_VALUE ? 'border-dashed' : ''}`}
             >
-              {opt.label}
+              {content.answers[value]}
             </button>
           );
         })}
@@ -341,7 +347,7 @@ export default function KinkTest({
         disabled={index === 0}
         onClick={() => setIndex(index - 1)}
       >
-        ← Zpět
+        {t.back}
       </button>
     </div>
   );

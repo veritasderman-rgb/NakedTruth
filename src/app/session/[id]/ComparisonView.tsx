@@ -163,7 +163,7 @@ export default function ComparisonView({ session, questions, answers, myUserId }
               className="animate-in fade-in slide-in-from-bottom-4 duration-500"
               style={{ animationDelay: `${Math.min(index * 50, 200)}ms`, animationFillMode: 'backwards' }}
             >
-              <Card className={`transition-all ${item.isMatch ? "border-green-200 bg-green-50/30" : "border-none shadow-sm"}`}>
+              <Card className={`transition-all ${item.isMatch ? "border-emerald-500/40 bg-emerald-500/10" : "border-none shadow-sm"}`}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
@@ -173,7 +173,7 @@ export default function ComparisonView({ session, questions, answers, myUserId }
                       <CardTitle className="text-base font-medium leading-snug">{item.displayPrompt}</CardTitle>
                     </div>
                     {item.isMatch && (
-                      <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-none shrink-0">
+                      <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 border-none shrink-0">
                         Shoda
                       </Badge>
                     )}

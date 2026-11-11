@@ -131,7 +131,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
   return (
     <div className="w-full max-w-sm mx-auto">
       {!isConfigured && (
-        <div className="mt-8 rounded-md bg-yellow-50 p-4 text-left text-xs text-yellow-800 border border-yellow-200">
+        <div className="mt-8 rounded-md bg-yellow-500/10 p-4 text-left text-xs text-yellow-200 border border-yellow-500/40">
           <p className="font-bold text-sm">Chybí konfigurace</p>
           <ul className="mt-2 list-disc list-inside space-y-1">
             {missingVars.map(v => <li key={v}>{v}</li>)}
@@ -141,7 +141,7 @@ export default function HomeForm({ isConfigured, missingVars }: { isConfigured: 
       )}
 
       {premiumNotice === 'success' && (
-        <div className="mt-8 rounded-md bg-green-50 p-3 text-sm text-green-800 border border-green-200">
+        <div className="mt-8 rounded-md bg-emerald-500/10 p-3 text-sm text-emerald-200 border border-emerald-500/40">
           Premium odemčeno 🎉 Vyberte balíček a zadejte stejný e-mail, se kterým jste platili.
         </div>
       )}
