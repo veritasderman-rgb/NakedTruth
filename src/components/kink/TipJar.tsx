@@ -25,7 +25,6 @@ export default function TipJar({
   useEffect(() => {
     const tip = new URLSearchParams(window.location.search).get('tip');
     if (tip === 'thanks' || tip === 'cancelled') setNotice(tip);
-    if (tip === 'thanks') track('tip_paid');
   }, []);
 
   const price = (tier: Tier) =>

@@ -398,3 +398,9 @@ create table if not exists events (
   count integer not null default 0,
   primary key (day, name, locale)
 );
+
+-- Stripe webhook events already handled, so a retried delivery is a no-op.
+create table if not exists stripe_events (
+  id text primary key,
+  received_at timestamptz not null default now()
+);

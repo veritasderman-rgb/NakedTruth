@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe';
 import { getSql, isUuid } from '@/lib/db';
 import { unlockReport } from '@/lib/kink-store';
 import { REPORT_KIND } from '@/lib/stripe';
+import { countEvent } from '@/lib/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,15 @@ export async function POST(req: Request) {
     return Response.json({ error: 'invalid_signature' }, { status: 400 });
   }
 
+  // Stripe retries deliveries; handle each event only once.
+  try {
+    const first = await getSql()`insert into stripe_events (id) values (${event.id}) on conflict do nothing returning id`;
+    if (first.length === 0) return Response.json({ received: true, duplicate: true });
+  } catch (e) {
+    console.error('[webhook] could not record event', e);
+    return Response.json({ error: 'storage_failed' }, { status: 500 });
+  }
+
   // async_payment_succeeded covers delayed payment methods, where the session
   // completes unpaid and the money arrives later.
   if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
@@ -38,10 +48,11 @@ export async function POST(req: Request) {
     if (session.metadata?.kind === REPORT_KIND) {
       // Detailed Kinkometr report: unlock the result the payment was made for.
       if (session.payment_status === 'paid' && session.metadata.profile) {
-        await unlockReport(session.metadata.profile, paymentIntent).catch((e) => console.error('[webhook] failed to unlock report', e));
+        await unlockReport(session.metadata.profile, paymentIntent, session.metadata.locale).catch((e) => console.error('[webhook] failed to unlock report', e));
       }
     } else if (session.metadata?.kind === 'tip') {
-      // Tips unlock nothing.
+      // Tips unlock nothing; a confirmed one is counted here, once.
+      if (session.payment_status === 'paid') await countEvent('tip_paid', session.metadata.locale);
     } else if (session.payment_status === 'unpaid') {
       // A delayed payment that has not arrived yet: wait for the async event.
     } else if (isUuid(userId)) {

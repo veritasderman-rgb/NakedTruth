@@ -39,7 +39,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
     <main className="mx-auto w-full max-w-3xl space-y-10 px-5 py-8">
       <header>
         <h1 className="text-2xl font-bold">Stats — last {days} days</h1>
-        <p className="text-xs text-muted-foreground">Anonymous daily counters. Page views include reloads and some bots; actions do not.</p>
+        <p className="text-xs text-muted-foreground">Anonymous daily counters. Page views include reloads and some bots; actions do not. report_paid counts each unlocked report once; tip_paid needs the Stripe webhook and stays at zero without it.</p>
       </header>
 
       <section className="space-y-2">

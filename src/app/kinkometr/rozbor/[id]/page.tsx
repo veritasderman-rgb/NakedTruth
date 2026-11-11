@@ -4,7 +4,6 @@ import KinkShell from '@/components/kink/Shell';
 import CupGlass from '@/components/kink/CupGlass';
 import PrintButton from '@/components/kink/PrintButton';
 import Track from '@/components/Track';
-import { countEvent } from '@/lib/events';
 import ReportOffer from '@/components/kink/ReportOffer';
 import { fmt, localePath } from '@/lib/i18n';
 import { getContent } from '@/lib/kink-content';
@@ -85,10 +84,9 @@ export default async function KinkReportPage({
   if (!unlocked && paid) {
     const payment = await paidFor(paid, profile.inviteToken);
     if (payment) {
-      await unlockReport(profile.inviteToken, payment);
+      await unlockReport(profile.inviteToken, payment, locale);
       unlocked = true;
       justPaid = true;
-      await countEvent('report_paid', locale);
     }
   }
 

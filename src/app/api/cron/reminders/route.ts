@@ -50,19 +50,24 @@ export async function GET(req: Request) {
   }
 
   // Retention promised in the privacy policy: nothing older than 24 months.
-  // Deleting a couple cascades to its sessions, questions and answers.
+  // Each quiz session is judged by its own age — a couple can be years old and
+  // still be playing a round today. Couples and users go only once nothing of
+  // theirs is left.
   let purged = 0;
   try {
     const sql = getSql();
-    const a = await sql`delete from kink_profiles where created_at < now() - interval '24 months' returning id`;
-    const b = await sql`delete from couples where created_at < now() - interval '24 months' returning id`;
+    const profiles = await sql`delete from kink_profiles where created_at < now() - interval '24 months' returning id`;
+    const sessions = await sql`delete from sessions where created_at < now() - interval '24 months' returning id`;
+    await sql`
+      delete from couples c where c.created_at < now() - interval '24 months'
+        and not exists (select 1 from sessions s where s.couple_id = c.id)`;
     await sql`
       delete from users u where u.created_at < now() - interval '24 months'
         and not exists (select 1 from couple_members m where m.user_id = u.id)
         and not exists (select 1 from sessions s where u.id in (s.created_by_user_id, s.partner_a_user_id, s.partner_b_user_id))
         and not exists (select 1 from couples c where c.created_by_user_id = u.id)
         and not exists (select 1 from entitlements e where e.user_id = u.id)`;
-    purged = a.length + b.length;
+    purged = profiles.length + sessions.length;
   } catch (error) {
     console.error('[cron] retention purge failed', error);
   }
