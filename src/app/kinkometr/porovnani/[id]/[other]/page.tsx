@@ -6,7 +6,12 @@ import Tip from '@/components/kink/Tip';
 import Track from '@/components/Track';
 import { fmt, localePath, plural } from '@/lib/i18n';
 import { getContent } from '@/lib/kink-content';
-import { getKinkProfile, getKinkProfileByInvite } from '@/lib/kink-store';
+import { areConnected, getKinkProfile, getKinkProfileByInvite, isPairReportUnlocked } from '@/lib/kink-store';
+import ReportOffer from '@/components/kink/ReportOffer';
+import { getExtra } from '@/lib/extra-content';
+import { getReport } from '@/lib/report-content';
+import { pairOfferTexts } from '@/lib/pair-texts';
+import { pairPriceLabel } from '@/lib/stripe';
 import { getLocale } from '@/lib/locale';
 import { compareProfiles, harmonyLevel, isUnexplored, type CupComparison, type CupResult } from '@/lib/kink';
 
@@ -32,7 +37,7 @@ export default async function KinkComparePage({ params }: { params: Promise<{ id
   ]);
 
   // Only profiles connected through an invite may be compared.
-  if (!mine || !theirs || !(mine.partnerOf === theirs.id || theirs.partnerOf === mine.id)) {
+  if (!mine || !theirs || !areConnected(mine, theirs)) {
     return (
       <KinkShell locale={locale} brand={t.brand} languageLabel={t.language}>
         <div className="space-y-4 py-16 text-center">
@@ -47,6 +52,7 @@ export default async function KinkComparePage({ params }: { params: Promise<{ id
   }
 
   const cmp = compareProfiles(mine.cups, theirs.cups);
+  const pairUnlocked = await isPairReportUnlocked(mine.inviteToken, theirs.inviteToken).catch(() => false);
   const by = (kind: CupComparison['kind']) => cmp.rows.filter((r) => r.kind === kind);
   const shared = by('shared');
   const showSafety = cmp.rows.some((r) => r.cup.bdsm);
@@ -183,6 +189,18 @@ export default async function KinkComparePage({ params }: { params: Promise<{ id
               ))}
             </ul>
           </section>
+        )}
+
+        {cmp.rows.length > 0 && (
+          <ReportOffer
+            id={mine.id}
+            other={theirs.inviteToken}
+            locale={locale}
+            price={pairPriceLabel(locale)}
+            unlocked={pairUnlocked}
+            reportPath={href(`/kinkometr/parovy-rozbor/${mine.id}/${theirs.inviteToken}`)}
+            t={pairOfferTexts(getReport(locale).ui, getExtra(locale).ui)}
+          />
         )}
 
         <Tip locale={locale} t={t} />

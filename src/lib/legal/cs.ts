@@ -29,7 +29,7 @@ export const cs: LegalContent = {
         h: '3. Bezplatná a placená část',
         p: [
           'Základní použití služby je zdarma a bez registrace.',
-          'Placený je: (a) podrobný rozbor výsledku Kinkometru, (b) odemčení prémiových balíčků otázek v párovém kvízu. Dobrovolný příspěvek „na kafe“ je dar provozovateli a nic neodemyká.',
+          'Placený je: (a) podrobný rozbor výsledku Kinkometru, (b) párový rozbor ke dvěma propojeným výsledkům Kinkometru, který se jednou platbou odemkne oběma partnerům, (c) odemčení prémiových balíčků otázek v párovém kvízu. Dobrovolný příspěvek „na kafe“ je dar provozovateli a nic neodemyká.',
           'Ceny jsou uvedeny u každé položky před zaplacením, jsou konečné a zahrnují všechny daně a poplatky. Platba je jednorázová, nejde o předplatné.',
         ],
       },
@@ -38,7 +38,7 @@ export const cs: LegalContent = {
         p: [
           'Smlouva je uzavřena okamžikem, kdy po stisknutí tlačítka s cenou dokončíte platbu. Platby zpracovává společnost Stripe; údaje o kartě provozovatel nevidí ani neukládá.',
           'Placený obsah je digitální obsah, který není dodán na hmotném nosiči. Zpřístupní se ihned po přijetí platby na stránce, na kterou vás platební brána vrátí. Podrobný rozbor zůstává dostupný na soukromém odkazu k danému výsledku.',
-          'Potvrzení o platbě obdržíte e-mailem od poskytovatele platební služby na adresu, kterou při platbě uvedete.',
+          'Potvrzení o uzavření smlouvy, včetně vašeho souhlasu s okamžitým zpřístupněním obsahu, vám pošleme e-mailem na adresu, kterou při platbě uvedete. Účtenku o platbě může poslat také poskytovatel platební služby.',
           'Smlouva se uzavírá v jazyce, ve kterém web používáte. Provozovatel smlouvu neukládá v podobě přístupné zákazníkovi; rozhodné je znění těchto podmínek účinné v den nákupu.',
         ],
       },
@@ -61,7 +61,7 @@ export const cs: LegalContent = {
         h: '7. Soukromé odkazy',
         p: [
           'Výsledky, porovnání, rozbory a relace kvízu jsou dostupné jen přes soukromý odkaz, který služba vygeneruje. Služba nemá uživatelské účty; kdo má odkaz, má k obsahu přístup. Odkaz si proto uložte a nesdílejte ho s nikým, komu obsah ukázat nechcete.',
-          'Ztracený odkaz nelze obnovit, protože provozovatel neví, komu který výsledek patří.',
+          'Ztracený odkaz lze obnovit jen tehdy, je-li u výsledku uložen váš e-mail: na stránce „Ztracený odkaz“ si necháte poslat všechny odkazy, které k adrese evidujeme. E-mail se k výsledku uloží, když o zaslání odkazu sami požádáte nebo když zakoupíte podrobný rozbor. Bez uloženého e-mailu odkaz obnovit nelze, protože provozovatel neví, komu který výsledek patří.',
         ],
       },
       {
@@ -99,7 +99,10 @@ export const cs: LegalContent = {
       {
         h: '2. Co ukládáme',
         p: [
-          'Kinkometr: vaše odpovědi, z nich spočítané „poháry“, zvolený jazyk a typ testu, nepovinné údaje „jsem sám/sama“ a „sex pro mě není důležitý“, nepovinný vlastní text a informaci, zda byl odemčen podrobný rozbor. Neukládáme jméno, e-mail ani IP adresu. Výsledek je spojen jen s náhodným soukromým odkazem.',
+          'Kinkometr: vaše odpovědi, z nich spočítané „poháry“, zvolený jazyk a typ testu, nepovinné údaje „jsem sám/sama“ a „sex pro mě není důležitý“, nepovinný vlastní text a informaci, zda byl odemčen podrobný rozbor. Neukládáme jméno ani IP adresu. Výsledek je spojen jen s náhodným soukromým odkazem.',
+          'E-mail u výsledku Kinkometru: ukládáme ho jen ve dvou případech — když si necháte odkaz na výsledek poslat e-mailem, nebo když zakoupíte podrobný rozbor (použije se adresa zadaná při platbě). Slouží k zaslání odkazu, potvrzení nákupu a k pozdějšímu obnovení ztraceného odkazu. Tím se výsledek spojí s vaší e-mailovou adresou; pokud to nechcete, e-mail nezadávejte. U párového rozboru a prémiových balíčků e-mail z platby použijeme jen k odeslání potvrzení a k výsledku ho neukládáme.',
+          'Rozdělaný test: dokud test nedokončíte, jsou vaše odpovědi uložené jen ve vašem prohlížeči (místní úložiště), abyste mohli později pokračovat. Na server se odešlou až při dokončení testu. Po dokončení, nebo když zvolíte „Začít znovu“, se z prohlížeče smažou; neaktivní rozdělaný test se nenabízí déle než 7 dní. Na sdíleném zařízení test raději dokončete nebo zvolte „Začít znovu“.',
+          'Sdílení výsledku: odkaz vytvořený tlačítkem „Sdílet moje poháry“ obsahuje jen názvy a naplnění nejvýše tří pohárů. Neobsahuje soukromý odkaz ani jiné odpovědi a na serveru se k němu nic neukládá.',
           'Párový kvíz: odpovědi obou partnerů, nastavení kvízu a jazyk. Pokud zadáte e-mail (svůj nebo partnerův), ukládáme ho, abychom mohli poslat pozvánku, připomínku a oznámení o výsledcích. Bez e-mailu je kvíz anonymní.',
           'Platby: provádí je Stripe. My dostaneme jen potvrzení, že platba proběhla, a její identifikátor. Číslo karty nevidíme.',
           'Měření návštěvnosti: počítáme jen souhrnné počty událostí za den (například kolik lidí dokončilo test). Nepoužíváme k tomu cookies, neukládáme IP adresu ani žádný identifikátor zařízení a jednotlivé návštěvníky nesledujeme.',
@@ -110,14 +113,14 @@ export const cs: LegalContent = {
         h: '3. Proč a na jakém základě',
         p: [
           'Odpovědi o sexuálním životě zpracováváme jen na základě vašeho výslovného souhlasu (čl. 9 odst. 2 písm. a) GDPR), který udělujete před začátkem testu, a jen proto, abychom vám – a v případě porovnání či kvízu i vašemu partnerovi – zobrazili výsledek.',
-          'E-mail zpracováváme pro splnění služby, o kterou jste požádali (čl. 6 odst. 1 písm. b) GDPR). Údaje o platbě pro splnění smlouvy a zákonných účetních povinností (čl. 6 odst. 1 písm. b) a c) GDPR).',
+          'E-mail zpracováváme pro splnění služby, o kterou jste požádali — zaslání a obnovení odkazu, pozvánky a potvrzení nákupu (čl. 6 odst. 1 písm. b) GDPR). Aby formulář pro zaslání odkazů nešel zneužít, evidujeme po dobu 7 dnů počet odeslaných e-mailů k otisku (hashi) adresy, nikoli k adrese samotné (čl. 6 odst. 1 písm. f) GDPR). Údaje o platbě pro splnění smlouvy a zákonných účetních povinností (čl. 6 odst. 1 písm. b) a c) GDPR).',
           'Souhlas můžete kdykoli odvolat tím, že výsledek smažete nebo o smazání požádáte. Odvolání nemá vliv na zpracování, které proběhlo předtím.',
         ],
       },
       {
         h: '4. Kdo dalšího údaje vidí',
         p: [
-          'Partner, kterého pozvete k porovnání Kinkometru, uvidí jen poháry, na kterých se shodnete, a souhrnnou shodu; ne vaše jednotlivé odpovědi ani celý výsledek. V párovém kvízu uvidí oba partneři odpovědi toho druhého – to je smysl kvízu – a to až poté, co oba dokončí.',
+          'Partner, kterého pozvete k porovnání Kinkometru, uvidí jen poháry, které alespoň jeden z vás chce a druhý neodmítl, souhrnnou shodu a to, jak se potkáváte v dominanci a submisi; ne vaše jednotlivé odpovědi ani celý výsledek. V párovém kvízu uvidí oba partneři odpovědi toho druhého – to je smysl kvízu – a to až poté, co oba dokončí.',
           'Zpracovatelé, které k provozu používáme: Neon (databáze, uložená v EU), Vercel (provoz webu), Stripe (platby) a Resend (odesílání e-mailů). Někteří z nich sídlí v USA; předání se řídí standardními smluvními doložkami nebo rámcem EU–USA pro ochranu údajů.',
           'Údaje neprodáváme a nepoužíváme k reklamě.',
         ],
@@ -132,9 +135,9 @@ export const cs: LegalContent = {
       {
         h: '6. Jak údaje smazat a jaká máte práva',
         p: [
-          'Výsledek Kinkometru smažete sami tlačítkem „Smazat můj výsledek“ na stránce výsledku. Smazání je okamžité a nevratné, včetně případně zaplaceného rozboru.',
+          'Výsledek Kinkometru smažete sami tlačítkem „Smazat můj výsledek“ na stránce výsledku. Smazání je okamžité a nevratné, včetně uloženého e-mailu a případně zaplaceného rozboru.',
           'Relaci párového kvízu smažeme na žádost zaslanou na {email}; přiložte odkaz na relaci, podle kterého ji najdeme.',
-          'Máte právo na přístup k údajům, opravu, výmaz, omezení zpracování, přenositelnost a právo odvolat souhlas. Protože výsledky nejsou spojeny s vaší identitou, dokážeme žádost vyřídit jen tehdy, když nám sdělíte soukromý odkaz na výsledek.',
+          'Máte právo na přístup k údajům, opravu, výmaz, omezení zpracování, přenositelnost a právo odvolat souhlas. Protože výsledky nejsou spojeny s vaší identitou, dokážeme žádost vyřídit jen tehdy, když nám sdělíte soukromý odkaz na výsledek nebo e-mail, který je u výsledku uložen.',
           'Stížnost můžete podat u Úřadu pro ochranu osobních údajů, www.uoou.gov.cz.',
         ],
       },

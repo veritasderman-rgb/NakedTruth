@@ -23,6 +23,16 @@ export const EVENTS = [
   'quiz_start',
   'quiz_submitted',
   'premium_buy_click',
+  'premium_paid',
+  'kink_share_click',
+  'kink_share_view',
+  'pair_buy_click',
+  'pair_paid',
+  'pair_view',
+  'link_saved',
+  'links_requested',
+  'landing_view',
+  'kink_resumed',
 ] as const;
 
 export type EventName = (typeof EVENTS)[number];

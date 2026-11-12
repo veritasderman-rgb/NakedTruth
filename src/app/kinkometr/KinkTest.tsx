@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { saveKinkProfile } from '../actions/kink';
@@ -28,6 +28,8 @@ import {
 // The slice of the locale content the test needs in the browser.
 export type TestContent = {
   ui: Record<string, string>;
+  // Resume banner wording.
+  extra: Record<'resumeTitle' | 'resumeText' | 'resumeContinue' | 'resumeRestart', string>;
   groups: Record<GroupKey, { label: string; desc: string }>;
   modes: Record<KinkMode, { label: string; desc: string }>;
   answers: string[];
@@ -35,6 +37,44 @@ export type TestContent = {
 };
 
 type Stage = 'intro' | 'round1' | 'offer' | 'round2' | 'finish';
+
+// An unfinished test is kept in this browser only, so closing the tab does not
+// throw the answers away. Nothing is sent anywhere until the test is saved.
+const PROGRESS_KEY = 'nt_kink_progress';
+const PROGRESS_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+type Progress = {
+  at: number;
+  invite: string | null;
+  mode: KinkMode;
+  stage: Exclude<Stage, 'intro'>;
+  index: number;
+  answers: Record<string, number>;
+  deepCups: CupKey[];
+  single: boolean | null;
+  lowDesire: boolean | null;
+};
+
+function readProgress(invite: string | null): Progress | null {
+  try {
+    const p = JSON.parse(window.localStorage.getItem(PROGRESS_KEY) ?? 'null') as Progress | null;
+    if (!p || typeof p !== 'object' || Date.now() - p.at > PROGRESS_MAX_AGE) return null;
+    if (p.invite !== invite || !MODE_KEYS.includes(p.mode) || !['round1', 'offer', 'round2', 'finish'].includes(p.stage)) return null;
+    if (!p.answers || Object.keys(p.answers).length === 0 || !Array.isArray(p.deepCups)) return null;
+    if (p.deepCups.some((k) => !CUP_BY_KEY[k])) return null;
+    return p;
+  } catch {
+    return null;
+  }
+}
+
+function clearProgress() {
+  try {
+    window.localStorage.removeItem(PROGRESS_KEY);
+  } catch {
+    // storage unavailable: nothing was saved either
+  }
+}
 
 // How many cups are pre-selected for the deeper round.
 const DEEP_PRESELECT = 5;
@@ -71,6 +111,7 @@ export default function KinkTest({
 }) {
   const router = useRouter();
   const t = content.ui;
+  const x = content.extra;
   const [mode, setMode] = useState<KinkMode>(initialMode);
   const [adult, setAdult] = useState(false);
   const [single, setSingle] = useState<boolean | null>(null);
@@ -82,6 +123,37 @@ export default function KinkTest({
   const [missing, setMissing] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<Progress | null>(null);
+
+  // Offer to continue an unfinished test. An invited test continues only in
+  // the inviter's mode.
+  useEffect(() => {
+    const p = readProgress(inviteToken);
+    if (p && (!lockedMode || p.mode === initialMode)) setSaved(p);
+  }, [inviteToken, lockedMode, initialMode]);
+
+  useEffect(() => {
+    if (stage === 'intro') return;
+    const p: Progress = { at: Date.now(), invite: inviteToken, mode, stage, index, answers, deepCups, single, lowDesire };
+    try {
+      window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
+    } catch {
+      // storage full or blocked: the test still works, it just cannot resume
+    }
+  }, [stage, index, answers, deepCups, mode, single, lowDesire, inviteToken]);
+
+  const resume = (p: Progress) => {
+    const total = p.stage === 'round2' ? deepQuestionsFor(p.deepCups).length : questionsFor(p.mode).length;
+    track('kink_resumed');
+    setMode(p.mode);
+    setAnswers(p.answers);
+    setDeepCups(p.deepCups);
+    setSingle(p.single);
+    setLowDesire(p.lowDesire);
+    setIndex(Math.max(0, Math.min(p.index, total - 1)));
+    setStage(p.stage);
+    setSaved(null);
+  };
 
   const round1 = useMemo(() => questionsFor(mode), [mode]);
   const round2 = useMemo(() => deepQuestionsFor(deepCups), [deepCups]);
@@ -104,6 +176,7 @@ export default function KinkTest({
         context: { single: single === true, lowDesire: lowDesire === true },
         missing,
       });
+      clearProgress();
       router.push(localePath(locale, partnerToken ? `/kinkometr/porovnani/${id}/${partnerToken}` : `/kinkometr/vysledek/${id}`));
     } catch (err: any) {
       console.error('Failed to save kink profile:', err);
@@ -143,6 +216,21 @@ export default function KinkTest({
           </h1>
           <p className="text-pretty text-sm text-muted-foreground">{inviteToken ? t.introLeadInvite : t.introLead}</p>
         </div>
+
+        {saved && (
+          <div className="glass-primary space-y-3 rounded-xl p-4" data-testid="resume">
+            <div>
+              <p className="text-sm font-semibold">{x.resumeTitle}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {fmt(x.resumeText, { done: Object.keys(saved.answers).length, total: questionsFor(saved.mode).length + saved.deepCups.length * 3 })}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={() => resume(saved)}>{x.resumeContinue}</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { clearProgress(); setSaved(null); }}>{x.resumeRestart}</Button>
+            </div>
+          </div>
+        )}
 
         <div className="glass rounded-xl p-4 text-sm">
           <p className="font-semibold">{t.unsureTitle}</p>

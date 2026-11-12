@@ -1,5 +1,4 @@
 import { getSql, isUuid } from '@/lib/db';
-import { countEvent } from '@/lib/events';
 import { cleanContext, isKinkMode, type CupResults, type KinkContext, type KinkMode } from '@/lib/kink';
 
 export type KinkProfile = {
@@ -14,6 +13,8 @@ export type KinkProfile = {
   missing: string | null;
   // The paid detailed report has been unlocked for this result.
   reportUnlocked: boolean;
+  // An e-mail is stored with the result (the address itself stays server-side).
+  hasEmail: boolean;
 };
 
 function toProfile(row: Record<string, any>): KinkProfile {
@@ -26,6 +27,7 @@ function toProfile(row: Record<string, any>): KinkProfile {
     context: cleanContext(row.context),
     missing: row.missing ?? null,
     reportUnlocked: !!row.report_unlocked_at,
+    hasEmail: !!row.email,
   };
 }
 
@@ -50,13 +52,44 @@ export async function getInvitedProfiles(id: string): Promise<KinkProfile[]> {
 
 // Marks the detailed report as paid for the profile behind this invite token.
 // Shared by the return page and the webhook, whichever sees the payment first.
-// Idempotent: only the first call unlocks, and only that call counts the sale.
-export async function unlockReport(inviteToken: string, payment: string | null, locale?: string | null): Promise<void> {
-  if (!isUuid(inviteToken)) return;
-  const unlocked = await getSql()`
+// Idempotent: only the first call unlocks. Returns the profile's private id on
+// that first call and null otherwise, so the sale is counted and confirmed once.
+// The buyer's e-mail is kept with the result unless one is already there.
+export async function unlockReport(inviteToken: string, payment: string | null, email: string | null): Promise<string | null> {
+  if (!isUuid(inviteToken)) return null;
+  const [row] = await getSql()`
     update kink_profiles
-    set report_unlocked_at = now(), report_payment = ${payment}
+    set report_unlocked_at = now(), report_payment = ${payment}, email = coalesce(email, ${email})
     where invite_token = ${inviteToken} and report_unlocked_at is null
     returning id`;
-  if (unlocked.length > 0) await countEvent('report_paid', locale);
+  return row?.id ?? null;
+}
+
+// ---- Couple report: one payment unlocks it for both connected results ----
+
+function ordered(a: string, b: string): [string, string] {
+  return a < b ? [a, b] : [b, a];
+}
+
+export async function isPairReportUnlocked(inviteA: string, inviteB: string): Promise<boolean> {
+  if (!isUuid(inviteA) || !isUuid(inviteB)) return false;
+  const [a, b] = ordered(inviteA.toLowerCase(), inviteB.toLowerCase());
+  const rows = await getSql()`select 1 from kink_pair_reports where a_invite = ${a} and b_invite = ${b}`;
+  return rows.length > 0;
+}
+
+// True only for the call that unlocked it.
+export async function unlockPairReport(inviteA: string, inviteB: string, payment: string | null): Promise<boolean> {
+  if (!isUuid(inviteA) || !isUuid(inviteB) || inviteA === inviteB) return false;
+  const [a, b] = ordered(inviteA.toLowerCase(), inviteB.toLowerCase());
+  const rows = await getSql()`
+    insert into kink_pair_reports (a_invite, b_invite, payment) values (${a}, ${b}, ${payment})
+    on conflict do nothing returning a_invite`;
+  return rows.length > 0;
+}
+
+// The two profiles may be compared only when one was filled in from the
+// other's invite.
+export function areConnected(a: KinkProfile, b: KinkProfile): boolean {
+  return a.partnerOf === b.id || b.partnerOf === a.id;
 }

@@ -24,6 +24,11 @@ Stripe Checkout, enabled by `STRIPE_SECRET_KEY`:
 - A result can be erased by its owner ("Delete my result"); the daily cron removes everything older than 24 months.
 - Usage is measured with anonymous daily counters in the `events` table (no cookies, no IP, no visitor id). Overview at `/stats?key=<STATS_KEY>`; without `STATS_KEY` the page does not exist.
 
+- Purchases are confirmed by e-mail from the app (`src/lib/purchase.ts`, `src/lib/mail.ts`); this needs `RESEND_API_KEY` and a verified sender in `EMAIL_FROM`.
+- A second paid product, the couple report (`/kinkometr/parovy-rozbor/...`), is sold from the comparison page; one payment unlocks it for both partners.
+- A result's owner can have the link e-mailed; `/obnova` mails every link stored for an address. An unfinished test resumes from the browser's local storage.
+- `/bdsm-test`, `/kink-test` and `/dom-sub-test` are search landing pages in all five languages. `/kinkometr/sdilet` is the public share page; its image comes from `/api/og/kink`.
+
 ## Run locally
 
 1. Install dependencies:
@@ -48,5 +53,6 @@ Stripe Checkout, enabled by `STRIPE_SECRET_KEY`:
 - `src/lib/db.ts` - Neon client (`getSql()`), server-side only
 - `src/lib/kink.ts` - Kinkometr structure and scoring (language-neutral)
 - `src/lib/kink-content/` - all Kinkometr wording, one file per language (`cs` is the source)
+- `src/lib/extra-content/` - wording for e-mails, sharing, the couple report and the landing pages
 - `src/lib/i18n.ts`, `src/middleware.ts` - locales: Czech at the root, `/en`, `/de`, `/fr`, `/es` as prefixes
 - `db/schema.sql`, `db/seed_questions.sql` - database schema and question bank

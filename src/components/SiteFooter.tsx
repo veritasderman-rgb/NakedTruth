@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { localePath, type Locale } from '@/lib/i18n';
 import { LEGAL_LINKS } from '@/lib/legal';
+import { getExtra } from '@/lib/extra-content';
 
-// Links every page needs: terms and privacy.
+// Links every page needs: terms, privacy and the way back to a lost link.
 export default function SiteFooter({ locale }: { locale: Locale }) {
   const links = LEGAL_LINKS[locale];
   return (
@@ -13,6 +14,9 @@ export default function SiteFooter({ locale }: { locale: Locale }) {
       </Link>
       <Link href={localePath(locale, '/soukromi')} className="underline hover:text-foreground">
         {links.privacy}
+      </Link>
+      <Link href={localePath(locale, '/obnova')} className="underline hover:text-foreground">
+        {getExtra(locale).ui.recoverLink}
       </Link>
     </footer>
   );

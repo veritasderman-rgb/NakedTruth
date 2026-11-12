@@ -4,7 +4,7 @@ import { DEFAULT_LOCALE, LOCALES, isLocale, type Locale } from '@/lib/i18n';
 const COOKIE = 'nt_lang';
 const PREFIXED = new RegExp(`^/(${LOCALES.filter((l) => l !== DEFAULT_LOCALE).join('|')})(/.*)?$`);
 // Pages where a first-time visitor is sent to their browser language.
-const LANDING = new Set(['/', '/kinkometr']);
+const LANDING = new Set(['/', '/kinkometr', '/bdsm-test', '/kink-test', '/dom-sub-test']);
 
 function remember(res: NextResponse, locale: Locale) {
   res.cookies.set(COOKIE, locale, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' });

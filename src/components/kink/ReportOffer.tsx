@@ -14,6 +14,7 @@ export default function ReportOffer({
   unlocked,
   reportPath,
   notice,
+  other,
   t,
 }: {
   // The viewer's private result id.
@@ -23,6 +24,8 @@ export default function ReportOffer({
   unlocked: boolean;
   reportPath: string;
   notice?: string | null;
+  // Partner's invite token: sells the couple report instead.
+  other?: string;
   t: Record<string, string>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -31,14 +34,14 @@ export default function ReportOffer({
   const [waiver, setWaiver] = useState(false);
 
   const buy = async () => {
-    track('report_buy_click');
+    track(other ? 'pair_buy_click' : 'report_buy_click');
     setBusy(true);
     setError(null);
     try {
       const res = await fetch('/api/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, locale }),
+        body: JSON.stringify({ id, locale, other }),
       });
       const data = await res.json();
       if (data.url) {

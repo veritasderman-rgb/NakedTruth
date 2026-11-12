@@ -31,6 +31,22 @@ export function reportPriceLabel(locale: Locale): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: minor % 100 === 0 ? 0 : 2 }).format(minor / 100);
 }
 
+// Couple report, unlocked for a pair of connected results: 99 Kč / 4.49 €.
+export const PAIR_KIND = 'pair';
+
+export function pairPricing(locale: Locale): { currency: 'czk' | 'eur'; minor: number } {
+  return locale === 'cs' ? { currency: 'czk', minor: 9900 } : { currency: 'eur', minor: 449 };
+}
+
+export function pairPriceLabel(locale: Locale): string {
+  return moneyLabel(locale, pairPricing(locale).currency, pairPricing(locale).minor);
+}
+
+// "79 Kč" / "€3.49" from an amount in the minor unit.
+export function moneyLabel(locale: Locale, currency: string, minor: number): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: minor % 100 === 0 ? 0 : 2 }).format(minor / 100);
+}
+
 // Voluntary "buy the author a coffee" tips. Three fixed tiers; Czech visitors
 // pay in CZK, everybody else in EUR. Amounts are in major units.
 export type TipTier = 's' | 'm' | 'l';
