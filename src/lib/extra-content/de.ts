@@ -119,6 +119,25 @@ export const de: ExtraContent = {
     sampleMore: 'Das wartet außerdem in der vollständigen Auswertung',
     sampleLink: 'Kostenlose Vorschau ansehen',
 
+    // ---- VIP codes ----
+
+    vipHave: 'Ich habe einen VIP-Code',
+
+    vipPlaceholder: 'VIP-Code',
+
+    vipApply: 'Mit Code freischalten',
+
+    vipInvalid: 'Der Code ist ungültig, abgelaufen oder aufgebraucht.',
+
+    vipActiveTitle: 'VIP-Zugang ist aktiv',
+
+    vipActiveLead: 'Der Code {code} ist 30 Tage lang in diesem Browser gespeichert. Damit schaltest du die ausführliche Auswertung, die Paar-Auswertung und die Premium-Pakete des Quiz ohne Bezahlung frei — klicke bei jedem Angebot einfach auf „Mit Code freischalten“.',
+
+    vipInvalidTitle: 'Dieser VIP-Code ist nicht gültig',
+
+    vipInvalidLead: 'Der Code ist abgelaufen, aufgebraucht oder im Link steckt ein Tippfehler. Melde dich bei der Person, die ihn dir geschickt hat.',
+
+
     landingFaqTitle: 'Häufige Fragen',
     landingMeasures: 'Was der Test misst',
     landingOther: 'Weitere Tests',

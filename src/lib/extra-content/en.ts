@@ -119,6 +119,25 @@ export const en: ExtraContent = {
     sampleMore: 'Also waiting in the full report',
     sampleLink: 'See a free sample',
 
+    // ---- VIP codes ----
+
+    vipHave: 'I have a VIP code',
+
+    vipPlaceholder: 'VIP code',
+
+    vipApply: 'Unlock with code',
+
+    vipInvalid: 'This code is invalid, expired or used up.',
+
+    vipActiveTitle: 'VIP access is active',
+
+    vipActiveLead: 'The code {code} is saved in this browser for 30 days. It unlocks the detailed report, the couple report and the premium quiz packs without payment — just click “Unlock with code” on any offer.',
+
+    vipInvalidTitle: 'This VIP code is not valid',
+
+    vipInvalidLead: 'The code has expired, has been used up, or there is a typo in the link. Get in touch with whoever sent it to you.',
+
+
     landingFaqTitle: 'Frequently asked questions',
     landingMeasures: 'What the test measures',
     landingOther: 'More tests',

@@ -7,6 +7,7 @@ import Tip from '@/components/kink/Tip';
 import DeleteResult from '@/components/kink/DeleteResult';
 import Track from '@/components/Track';
 import ReportOffer from '@/components/kink/ReportOffer';
+import { vipProps } from '@/lib/vip-texts';
 import ShareCups from '@/components/kink/ShareCups';
 import EmailLinkForm from '@/components/EmailLinkForm';
 import { getExtra } from '@/lib/extra-content';
@@ -203,6 +204,7 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
           unlocked={profile.reportUnlocked}
           reportPath={href(`/kinkometr/rozbor/${profile.id}`)}
           sampleLabel={x.sampleLink}
+          vip={await vipProps(x)}
           t={getReport(locale).ui}
         />
 

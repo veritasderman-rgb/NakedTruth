@@ -25,6 +25,7 @@ export const EVENTS = [
   'quiz_submitted',
   'premium_buy_click',
   'premium_paid',
+  'vip_unlock',
   'kink_share_click',
   'kink_share_view',
   'pair_buy_click',

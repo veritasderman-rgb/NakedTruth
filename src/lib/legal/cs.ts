@@ -106,7 +106,7 @@ export const cs: LegalContent = {
           'Párový kvíz: odpovědi obou partnerů, nastavení kvízu a jazyk. Pokud zadáte e-mail (svůj nebo partnerův), ukládáme ho, abychom mohli poslat pozvánku, připomínku a oznámení o výsledcích. Bez e-mailu je kvíz anonymní.',
           'Platby: provádí je Stripe. My dostaneme jen potvrzení, že platba proběhla, a její identifikátor. Číslo karty nevidíme.',
           'Měření návštěvnosti: počítáme jen souhrnné počty událostí za den (například kolik lidí dokončilo test). Nepoužíváme k tomu cookies, neukládáme IP adresu ani žádný identifikátor zařízení a jednotlivé návštěvníky nesledujeme.',
-          'Cookies: používáme jedinou, nezbytnou cookie pro zapamatování zvoleného jazyka. Reklamní ani analytické cookies nepoužíváme.',
+          'Cookies: používáme nezbytnou cookie pro zapamatování zvoleného jazyka. Pokud otevřete odkaz s VIP kódem, uloží se na 30 dní druhá cookie s tímto kódem, aby šel placený obsah odemknout bez platby. Reklamní ani analytické cookies nepoužíváme.',
         ],
       },
       {

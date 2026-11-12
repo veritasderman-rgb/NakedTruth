@@ -4,6 +4,7 @@ import KinkShell from '@/components/kink/Shell';
 import CupGlass from '@/components/kink/CupGlass';
 import PrintButton from '@/components/kink/PrintButton';
 import ReportOffer from '@/components/kink/ReportOffer';
+import { vipProps } from '@/lib/vip-texts';
 import Track from '@/components/Track';
 import { fmt, localePath } from '@/lib/i18n';
 import { getContent } from '@/lib/kink-content';
@@ -84,6 +85,7 @@ export default async function PairReportPage({
             unlocked={false}
             reportPath={reportPath}
             notice={paid ? r.ui.notVerified : cancelled ? r.ui.cancelled : null}
+            vip={await vipProps(x)}
             t={pairOfferTexts(r.ui, x)}
           />
           <Link href={comparePath} className="block text-center text-xs text-muted-foreground underline">

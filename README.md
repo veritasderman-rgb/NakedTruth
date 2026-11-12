@@ -29,6 +29,8 @@ Stripe Checkout, enabled by `STRIPE_SECRET_KEY`:
 - A result's owner can have the link e-mailed; `/obnova` mails every link stored for an address. An unfinished test resumes from the browser's local storage.
 - `/bdsm-test`, `/kink-test` and `/dom-sub-test` are search landing pages in all five languages. `/kinkometr/sdilet` is the public share page; its image comes from `/api/og/kink`.
 
+- VIP codes unlock paid content without payment, for testing and for reviewers. The owner creates them on `/stats?key=<STATS_KEY>`; a recipient opens `/vip/<code>` once and then unlocks with one click on any paywall.
+
 ## Run locally
 
 1. Install dependencies:
