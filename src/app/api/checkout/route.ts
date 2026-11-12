@@ -16,7 +16,8 @@ export async function POST(req: Request) {
   if (!userId) return Response.json({ error: 'missing_user' }, { status: 400 });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.get('host')}`;
-  const metadata = { user_id: String(userId), product_code: PREMIUM_PRODUCT_CODE };
+  // The locale lets the confirmation e-mail go out in the buyer's language.
+  const metadata = { user_id: String(userId), product_code: PREMIUM_PRODUCT_CODE, locale };
 
   try {
     const session = await stripe.checkout.sessions.create({

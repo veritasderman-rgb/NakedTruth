@@ -432,3 +432,12 @@ create table if not exists kink_pair_reports (
   primary key (a_invite, b_invite),
   check (a_invite < b_invite)
 );
+
+-- Purchase confirmation e-mails, one per Stripe Checkout session. Tracked
+-- apart from the unlock so that a failed send is retried. sent_at null =
+-- claimed but not (yet) delivered.
+create table if not exists purchase_confirmations (
+  session_id text primary key,
+  claimed_at timestamptz not null default now(),
+  sent_at timestamptz
+);
