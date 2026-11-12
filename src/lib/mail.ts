@@ -34,14 +34,16 @@ function layout(opts: { heading: string; body: string; footer: string; cta?: { l
 
 // Resolves to whether the message was handed to Resend. Never throws: an
 // e-mail failure must not break the request it belongs to.
-async function send(to: string, subject: string, html: string): Promise<boolean> {
+// With an idempotency key the provider sends a message at most once, however
+// often the same request is repeated.
+async function send(to: string, subject: string, html: string, idempotencyKey?: string): Promise<boolean> {
   if (!isMailConfigured()) {
     console.log('[mail] Resend not configured. Skipping email, subject:', subject);
     return false;
   }
   try {
     if (!resend) throw new Error('Resend client not initialized');
-    const { error } = await resend.emails.send({ from: FROM, to, subject, html });
+    const { error } = await resend.emails.send({ from: FROM, to, subject, html }, idempotencyKey ? { idempotencyKey } : undefined);
     if (error) throw error;
     return true;
   } catch (error) {
@@ -94,6 +96,8 @@ export async function sendPurchaseEmail(opts: {
   link: string;
   // The address was stored with the result (report purchases).
   stored: boolean;
+  // Stable per purchase, so a retried send cannot deliver twice.
+  idempotencyKey: string;
 }): Promise<boolean> {
   const t = getExtra(opts.locale).ui;
   const K = ({ report: 'Report', pair: 'Pair', premium: 'Premium' } as const)[opts.kind];
@@ -115,7 +119,8 @@ export async function sendPurchaseEmail(opts: {
       body: lines.map((l) => `<p>${l}</p>`).join(''),
       footer: t.mailPurchaseFooter,
       cta: { label: t[`mail${K}Cta`], href: opts.link },
-    })
+    }),
+    opts.idempotencyKey
   );
 }
 

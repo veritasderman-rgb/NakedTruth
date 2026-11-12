@@ -405,6 +405,10 @@ create table if not exists stripe_events (
   received_at timestamptz not null default now()
 );
 
+-- Set once the event has been handled completely. While null, received_at is
+-- the time of the latest attempt and the event may be worked again.
+alter table stripe_events add column if not exists processed_at timestamptz;
+
 -- ========= E-MAIL ACCESS RECOVERY =========
 -- Optional e-mail kept with a Kinkometr result: set when the owner asks to
 -- have the link e-mailed, or taken from the checkout when they buy a report.
