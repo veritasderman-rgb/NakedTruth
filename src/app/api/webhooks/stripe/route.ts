@@ -31,10 +31,21 @@ export async function POST(req: Request) {
     return Response.json({ error: 'invalid_signature' }, { status: 400 });
   }
 
-  // Stripe retries deliveries; handle each event only once.
+  // Stripe retries deliveries; handle each event only once. An event counts
+  // as handled only when processed_at is set, so one that failed half-way is
+  // worked again. The claim keeps two deliveries from working it at once; a
+  // claim left behind by a crash can be taken over after a minute.
   try {
-    const first = await getSql()`insert into stripe_events (id) values (${event.id}) on conflict do nothing returning id`;
-    if (first.length === 0) return Response.json({ received: true, duplicate: true });
+    const claimed = await getSql()`
+      insert into stripe_events (id) values (${event.id})
+      on conflict (id) do update set received_at = now()
+        where stripe_events.processed_at is null and stripe_events.received_at < now() - interval '1 minute'
+      returning id`;
+    if (claimed.length === 0) {
+      const [row] = await getSql()`select processed_at from stripe_events where id = ${event.id}`;
+      if (row?.processed_at) return Response.json({ received: true, duplicate: true });
+      return Response.json({ error: 'in_progress' }, { status: 409 });
+    }
   } catch (e) {
     console.error('[webhook] could not record event', e);
     return Response.json({ error: 'storage_failed' }, { status: 500 });
@@ -86,10 +97,21 @@ export async function POST(req: Request) {
   }
 
   if (!done) {
-    // Forget the event so the retry is handled, and answer with an error so
-    // Stripe retries. Every step above is idempotent.
-    await getSql()`delete from stripe_events where id = ${event.id}`.catch((e) => console.error('[webhook] could not release event', e));
+    // Answer with an error so Stripe delivers the event again, and release
+    // the claim so that the retry need not wait for it to expire. If this
+    // write fails too, the claim simply expires. Every step above is idempotent.
+    await getSql()`update stripe_events set received_at = now() - interval '1 hour' where id = ${event.id} and processed_at is null`.catch((e) =>
+      console.error('[webhook] could not release event', e)
+    );
     return Response.json({ error: 'incomplete' }, { status: 500 });
+  }
+
+  try {
+    await getSql()`update stripe_events set processed_at = now() where id = ${event.id}`;
+  } catch (e) {
+    // Not marked as handled: Stripe retries and the idempotent steps run again.
+    console.error('[webhook] could not mark event as processed', e);
+    return Response.json({ error: 'storage_failed' }, { status: 500 });
   }
 
   return Response.json({ received: true });

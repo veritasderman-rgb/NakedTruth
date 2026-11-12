@@ -60,6 +60,7 @@ export async function confirmByEmail(session: Stripe.Checkout.Session, kind: Pur
     paidAt: new Date(session.created * 1000),
     link,
     stored,
+    idempotencyKey: `purchase-confirmation/${session.id}`,
   });
   if (sent) await sql`update purchase_confirmations set sent_at = now() where session_id = ${session.id}`;
   return sent;
