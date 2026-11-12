@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Stats | NakedTruth', robots: { index: false, follow: false } };
 
 // Steps of the Kinkometr funnel, in order, with the share of the previous step.
-const FUNNEL = ['kink_intro_view', 'kink_start', 'kink_round1_done', 'kink_saved', 'kink_result_view', 'report_sample_view', 'report_buy_click', 'report_paid'] as const;
+const FUNNEL = ['kink_intro_view', 'kink_start', 'kink_round1_done', 'kink_saved', 'kink_result_view', 'report_buy_click', 'report_paid'] as const;
 
 // Owner-only overview of the anonymous counters: /stats?key=<STATS_KEY>.
 export default async function StatsPage({ searchParams }: { searchParams: Promise<{ key?: string; days?: string }> }) {
@@ -59,6 +59,15 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
             })}
           </tbody>
         </table>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Free sample of the report</h2>
+        <p className="text-sm">
+          {total('report_sample_view')} views
+          {total('kink_result_view') > 0 ? ` — ${Math.round((total('report_sample_view') / total('kink_result_view')) * 100)} % of result views` : ''}
+        </p>
+        <p className="text-xs text-muted-foreground">An optional detour, not a funnel step: the report can also be bought straight from the result page.</p>
       </section>
 
       <section className="space-y-2">
