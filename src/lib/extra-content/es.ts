@@ -111,6 +111,14 @@ export const es: ExtraContent = {
     pairHiddenNote: 'Las copas que uno de los dos ha rechazado no aparecen en el plan ni se muestran en ningún sitio.',
 
     // ---- Landing pages (shared) ----
+    // ---- Free sample of the detailed report ----
+    sampleKicker: 'Muestra gratis',
+    sampleTitle: 'Así es tu informe',
+    sampleLead: 'Tu copa más llena está desbloqueada por completo. El informe completo analiza con el mismo detalle cada copa que te atrae: {n} en total.',
+    sampleLocked: 'Bloqueado',
+    sampleMore: 'Lo que te espera además en el informe completo',
+    sampleLink: 'Ver una muestra gratis',
+
     landingFaqTitle: 'Preguntas frecuentes',
     landingMeasures: 'Qué mide el test',
     landingOther: 'Más tests',

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Stats | NakedTruth', robots: { index: false, follow: false } };
 
 // Steps of the Kinkometr funnel, in order, with the share of the previous step.
-const FUNNEL = ['kink_intro_view', 'kink_start', 'kink_round1_done', 'kink_saved', 'kink_result_view', 'report_buy_click', 'report_paid'] as const;
+const FUNNEL = ['kink_intro_view', 'kink_start', 'kink_round1_done', 'kink_saved', 'kink_result_view', 'report_sample_view', 'report_buy_click', 'report_paid'] as const;
 
 // Owner-only overview of the anonymous counters: /stats?key=<STATS_KEY>.
 export default async function StatsPage({ searchParams }: { searchParams: Promise<{ key?: string; days?: string }> }) {

@@ -133,6 +133,14 @@ const ui = {
   pairHiddenNote: 'Poháry, které jeden z vás odmítl, v plánu nejsou a nikde se nezobrazí.',
 
   // ---- Landing pages (shared) ----
+  // ---- Free sample of the detailed report ----
+  sampleKicker: 'Ukázka zdarma',
+  sampleTitle: 'Takhle vypadá tvůj rozbor',
+  sampleLead: 'Tvůj nejplnější pohár máš odemčený celý. V plném rozboru je stejně podrobně rozebraný každý pohár, který tě láká — celkem {n}.',
+  sampleLocked: 'Zamčeno',
+  sampleMore: 'V plném rozboru tě čeká ještě',
+  sampleLink: 'Podívat se na ukázku zdarma',
+
   landingFaqTitle: 'Časté otázky',
   landingMeasures: 'Co test měří',
   landingOther: 'Další testy',

@@ -15,6 +15,7 @@ export default function ReportOffer({
   reportPath,
   notice,
   other,
+  sampleLabel,
   t,
 }: {
   // The viewer's private result id.
@@ -26,6 +27,8 @@ export default function ReportOffer({
   notice?: string | null;
   // Partner's invite token: sells the couple report instead.
   other?: string;
+  // Label of a link to the free sample (shown on the result page).
+  sampleLabel?: string;
   t: Record<string, string>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -89,6 +92,11 @@ export default function ReportOffer({
             {busy ? t.redirecting : fmt(t.buy, { price })}
           </button>
           <p className="text-[11px] text-muted-foreground">{t.oneTime}</p>
+          {sampleLabel && (
+            <Link href={reportPath} className="block rounded-xl border border-white/15 px-6 py-3 text-center text-sm font-medium hover:bg-white/5">
+              {sampleLabel}
+            </Link>
+          )}
         </>
       )}
       {(error || notice) && <p className="rounded-md bg-white/5 p-2 text-xs text-yellow-200">{error || notice}</p>}
