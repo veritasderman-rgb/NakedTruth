@@ -109,6 +109,8 @@ const ui: ReportContent['ui'] = {
   item5: 'Drucken oder als PDF speichern',
   buy: 'Freischalten für {price}',
   oneTime: 'Einmalzahlung, ohne Abo und ohne Registrierung. Gilt für dieses Ergebnis für immer.',
+  waiver: 'Ich möchte, dass die Auswertung sofort freigeschaltet wird, und mir ist bekannt, dass ich damit mein 14-tägiges Widerrufsrecht verliere.',
+  termsLink: 'AGB',
   redirecting: 'Weiterleitung zur Zahlung …',
   unavailable: 'Zahlungen sind gerade nicht verfügbar. Bitte versuche es später noch einmal.',
   failed: 'Die Zahlung ließ sich nicht starten. Bitte versuche es noch einmal.',

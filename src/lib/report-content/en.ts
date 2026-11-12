@@ -109,6 +109,8 @@ const ui: ReportContent['ui'] = {
   item5: 'Print or save as PDF',
   buy: 'Unlock for {price}',
   oneTime: 'One-off payment, no subscription and no sign-up. Valid for this result for good.',
+  waiver: 'I want the report made available immediately and I understand that I thereby lose my right to withdraw from the contract within 14 days.',
+  termsLink: 'Terms and conditions',
   redirecting: 'Redirecting to payment…',
   unavailable: 'Payments aren’t available right now. Please try again later.',
   failed: 'We couldn’t start the payment. Please try again.',

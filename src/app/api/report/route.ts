@@ -37,7 +37,9 @@ export async function POST(req: Request) {
           price_data: { currency, unit_amount: minor, product_data: { name: getReport(locale).ui.productName } },
         },
       ],
-      metadata: { kind: REPORT_KIND, profile: profile.inviteToken, locale },
+      // The buy button is enabled only after the buyer ticks the consent to
+      // immediate delivery; keep a record of it with the payment.
+      metadata: { kind: REPORT_KIND, profile: profile.inviteToken, locale, immediate_delivery_consent: 'yes' },
       success_url: `${page}?paid={CHECKOUT_SESSION_ID}`,
       cancel_url: `${page}?cancelled=1`,
     });

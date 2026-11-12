@@ -109,6 +109,8 @@ const ui: ReportContent['ui'] = {
   item5: 'Impresión o guardado en PDF',
   buy: 'Desbloquear por {price}',
   oneTime: 'Pago único, sin suscripción y sin registro. Vale para este resultado para siempre.',
+  waiver: 'Quiero acceder al informe de inmediato y entiendo que con ello pierdo mi derecho de desistimiento de 14 días.',
+  termsLink: 'Condiciones generales',
   redirecting: 'Redirigiendo al pago…',
   unavailable: 'Los pagos no están disponibles ahora mismo. Inténtalo más tarde.',
   failed: 'No se ha podido iniciar el pago. Inténtalo de nuevo.',

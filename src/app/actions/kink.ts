@@ -1,6 +1,8 @@
 'use server';
 
-import { getSql } from '@/lib/db';
+import { redirect } from 'next/navigation';
+import { getSql, isUuid } from '@/lib/db';
+import { isLocale, localePath, DEFAULT_LOCALE } from '@/lib/i18n';
 import { MISSING_MAX, cleanContext, isKinkMode, scoreAnswers } from '@/lib/kink';
 import { getKinkProfileByInvite } from '@/lib/kink-store';
 
@@ -30,4 +32,12 @@ export async function saveKinkProfile(
     returning id`;
 
   return { id: row.id, partnerToken: inviter?.inviteToken ?? null };
+}
+
+// Erases a Kinkometr result for good — answers, cups, free text and any paid
+// report. Whoever holds the private id is its owner. Profiles filled in from
+// this one's invite keep their own result and simply lose the link.
+export async function deleteKinkProfile(id: string, locale: string): Promise<never> {
+  if (isUuid(id)) await getSql()`delete from kink_profiles where id = ${id}`;
+  redirect(localePath(isLocale(locale) ? locale : DEFAULT_LOCALE, '/kinkometr'));
 }

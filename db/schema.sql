@@ -388,3 +388,19 @@ alter table kink_profiles
 
 create unique index if not exists uq_kink_profiles_invite_token on kink_profiles (invite_token);
 create index if not exists idx_kink_profiles_partner_of on kink_profiles (partner_of) where partner_of is not null;
+
+-- ========= EVENTS: anonymous daily counters =========
+-- One number per day, event and language. No visitor id, no IP, no cookie.
+create table if not exists events (
+  day date not null,
+  name text not null,
+  locale text not null default 'cs',
+  count integer not null default 0,
+  primary key (day, name, locale)
+);
+
+-- Stripe webhook events already handled, so a retried delivery is a no-op.
+create table if not exists stripe_events (
+  id text primary key,
+  received_at timestamptz not null default now()
+);

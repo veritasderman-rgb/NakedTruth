@@ -1,4 +1,5 @@
 import { getSql, isUuid } from '@/lib/db';
+import { countEvent } from '@/lib/events';
 import { cleanContext, isKinkMode, type CupResults, type KinkContext, type KinkMode } from '@/lib/kink';
 
 export type KinkProfile = {
@@ -48,12 +49,14 @@ export async function getInvitedProfiles(id: string): Promise<KinkProfile[]> {
 }
 
 // Marks the detailed report as paid for the profile behind this invite token.
-// Idempotent: the first payment wins, later calls change nothing.
-export async function unlockReport(inviteToken: string, payment: string | null): Promise<void> {
+// Shared by the return page and the webhook, whichever sees the payment first.
+// Idempotent: only the first call unlocks, and only that call counts the sale.
+export async function unlockReport(inviteToken: string, payment: string | null, locale?: string | null): Promise<void> {
   if (!isUuid(inviteToken)) return;
-  await getSql()`
+  const unlocked = await getSql()`
     update kink_profiles
-    set report_unlocked_at = coalesce(report_unlocked_at, now()),
-        report_payment = coalesce(report_payment, ${payment})
-    where invite_token = ${inviteToken}`;
+    set report_unlocked_at = now(), report_payment = ${payment}
+    where invite_token = ${inviteToken} and report_unlocked_at is null
+    returning id`;
+  if (unlocked.length > 0) await countEvent('report_paid', locale);
 }

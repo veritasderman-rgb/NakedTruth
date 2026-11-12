@@ -5,7 +5,7 @@ import { LOCALES, localePath } from '@/lib/i18n';
 // Public landing pages in every language, cross-linked as alternates.
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = appUrl();
-  return ['/', '/kinkometr'].flatMap((path) =>
+  return ['/', '/kinkometr', '/podminky', '/soukromi'].flatMap((path) =>
     LOCALES.map((locale) => ({
       url: `${base}${localePath(locale, path)}`,
       changeFrequency: 'weekly' as const,

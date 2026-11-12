@@ -123,6 +123,8 @@ const ui = {
   item5: 'Tisk nebo uložení do PDF',
   buy: 'Odemknout za {price}',
   oneTime: 'Jednorázově, bez předplatného a bez registrace. Platí pro tento výsledek napořád.',
+  waiver: 'Chci rozbor zpřístupnit ihned a beru na vědomí, že tím ztrácím právo odstoupit od smlouvy do 14 dnů.',
+  termsLink: 'Obchodní podmínky',
   redirecting: 'Přesměrovávám na platbu…',
   unavailable: 'Platby teď nejsou dostupné. Zkus to prosím později.',
   failed: 'Platbu se nepodařilo spustit. Zkus to prosím znovu.',

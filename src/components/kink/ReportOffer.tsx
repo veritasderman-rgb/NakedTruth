@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { fmt, type Locale } from '@/lib/i18n';
+import { fmt, localePath, type Locale } from '@/lib/i18n';
+import { track } from '@/lib/track';
 
 // Teaser + buy button for the paid detailed report. When the report is already
 // unlocked it turns into a plain link to it.
@@ -26,8 +27,11 @@ export default function ReportOffer({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Required by law: explicit consent to immediate delivery of digital content.
+  const [waiver, setWaiver] = useState(false);
 
   const buy = async () => {
+    track('report_buy_click');
     setBusy(true);
     setError(null);
     try {
@@ -69,7 +73,16 @@ export default function ReportOffer({
         </Link>
       ) : (
         <>
-          <button type="button" onClick={buy} disabled={busy} className="btn-glow w-full rounded-xl px-6 py-3.5 text-sm font-semibold disabled:opacity-60">
+          <label className="flex cursor-pointer items-start gap-2 text-[11px] text-muted-foreground">
+            <input type="checkbox" checked={waiver} onChange={(e) => setWaiver(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" />
+            <span>
+              {t.waiver}{' '}
+              <a href={localePath(locale, '/podminky')} target="_blank" rel="noopener" className="underline">
+                {t.termsLink}
+              </a>
+            </span>
+          </label>
+          <button type="button" onClick={buy} disabled={busy || !waiver} className="btn-glow w-full rounded-xl px-6 py-3.5 text-sm font-semibold disabled:opacity-60">
             {busy ? t.redirecting : fmt(t.buy, { price })}
           </button>
           <p className="text-[11px] text-muted-foreground">{t.oneTime}</p>

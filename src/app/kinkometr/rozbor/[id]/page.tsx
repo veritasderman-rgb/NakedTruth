@@ -3,6 +3,7 @@ import Link from 'next/link';
 import KinkShell from '@/components/kink/Shell';
 import CupGlass from '@/components/kink/CupGlass';
 import PrintButton from '@/components/kink/PrintButton';
+import Track from '@/components/Track';
 import ReportOffer from '@/components/kink/ReportOffer';
 import { fmt, localePath } from '@/lib/i18n';
 import { getContent } from '@/lib/kink-content';
@@ -83,7 +84,7 @@ export default async function KinkReportPage({
   if (!unlocked && paid) {
     const payment = await paidFor(paid, profile.inviteToken);
     if (payment) {
-      await unlockReport(profile.inviteToken, payment);
+      await unlockReport(profile.inviteToken, payment, locale);
       unlocked = true;
       justPaid = true;
     }
@@ -130,6 +131,7 @@ export default async function KinkReportPage({
 
   return (
     <KinkShell locale={locale} brand={c.ui.brand} languageLabel={c.ui.language}>
+      <Track name="report_view" />
       <article className="space-y-10">
         <header className="space-y-3">
           <h1 className="text-gradient text-balance text-4xl font-bold tracking-tight">{t.title}</h1>

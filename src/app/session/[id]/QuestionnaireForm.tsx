@@ -8,15 +8,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { submitAnswers } from "../../actions/session";
-import { fmt } from "@/lib/i18n";
+import { fmt, localePath, type Locale } from "@/lib/i18n";
+import { track } from "@/lib/track";
 import type { QuizContent } from "@/lib/quiz-content";
 
-export default function QuestionnaireForm({ sessionId, token, questions, t }: { sessionId: string, token: string, questions: any[], t: QuizContent }) {
+export default function QuestionnaireForm({ sessionId, token, questions, t, locale }: { sessionId: string, token: string, questions: any[], t: QuizContent, locale: Locale }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<any[]>([]);
   const [currentValue, setCurrentValue] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Answers are about sex life: explicit consent is needed before the first one.
+  const [consent, setConsent] = useState(false);
 
   const currentQuestion = questions[currentIndex];
   const progress = ((currentIndex) / questions.length) * 100;
@@ -69,6 +72,7 @@ export default function QuestionnaireForm({ sessionId, token, questions, t }: { 
     setError(null);
     try {
       await submitAnswers(sessionId, token, finalAnswers);
+      track('quiz_submitted');
       window.location.reload();
     } catch (err: any) {
       console.error(err);
@@ -78,7 +82,7 @@ export default function QuestionnaireForm({ sessionId, token, questions, t }: { 
   };
 
   const isLastQuestion = currentIndex >= questions.length - 1;
-  const canProceed = currentValue !== null && (currentQuestion.kind !== 'short_answer' || currentValue.trim().length > 0);
+  const canProceed = consent && currentValue !== null && (currentQuestion.kind !== 'short_answer' || currentValue.trim().length > 0);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-12">
@@ -129,6 +133,18 @@ export default function QuestionnaireForm({ sessionId, token, questions, t }: { 
                 onChange={(e) => setCurrentValue(e.target.value)}
                 className="min-h-[150px] resize-none"
               />
+            )}
+
+            {currentIndex === 0 && (
+              <label className="flex cursor-pointer items-start gap-3 text-xs text-muted-foreground">
+                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" />
+                <span>
+                  {t.consent}{' '}
+                  <a href={localePath(locale, '/soukromi')} target="_blank" rel="noopener" className="underline">
+                    {t.privacyLink}
+                  </a>
+                </span>
+              </label>
             )}
 
             {error && (

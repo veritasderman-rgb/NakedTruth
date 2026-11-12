@@ -4,6 +4,7 @@ import HomeForm from "./HomeForm";
 import CupGlass from "@/components/kink/CupGlass";
 import LangSwitch from "@/components/kink/LangSwitch";
 import Tip from "@/components/kink/Tip";
+import Track from "@/components/Track";
 import { isDbConfigured } from "@/lib/db";
 import { fmt, localePath } from "@/lib/i18n";
 import { CUPS, CUP_BY_KEY } from "@/lib/kink";
@@ -43,6 +44,7 @@ export default async function Home() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center px-5 py-6 text-center">
+      <Track name="home_view" />
       <div className="mb-8 flex w-full items-center justify-between gap-3">
         <span className="brand-pill">NakedTruth</span>
         <LangSwitch locale={locale} label={t.language} />
