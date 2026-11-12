@@ -67,6 +67,8 @@ export async function GET(req: Request) {
         and not exists (select 1 from sessions s where u.id in (s.created_by_user_id, s.partner_a_user_id, s.partner_b_user_id))
         and not exists (select 1 from couples c where c.created_by_user_id = u.id)
         and not exists (select 1 from entitlements e where e.user_id = u.id)`;
+    await sql`delete from mail_throttle where day < current_date - 7`;
+    await sql`delete from stripe_events where received_at < now() - interval '90 days'`;
     purged = profiles.length + sessions.length;
   } catch (error) {
     console.error('[cron] retention purge failed', error);

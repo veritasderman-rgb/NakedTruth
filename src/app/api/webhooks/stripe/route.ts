@@ -1,9 +1,12 @@
 import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { getSql, isUuid } from '@/lib/db';
-import { unlockReport } from '@/lib/kink-store';
-import { REPORT_KIND } from '@/lib/stripe';
+import { PAIR_KIND, REPORT_KIND } from '@/lib/stripe';
 import { countEvent } from '@/lib/events';
+import { confirmByEmail, fulfil, sessionLocale } from '@/lib/purchase';
+import { appUrl } from '@/lib/app-url';
+import { localePath } from '@/lib/i18n';
+import { getQuiz } from '@/lib/quiz-content';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,11 +48,9 @@ export async function POST(req: Request) {
     const productCode = session.metadata?.product_code || 'premium';
     const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : null;
 
-    if (session.metadata?.kind === REPORT_KIND) {
-      // Detailed Kinkometr report: unlock the result the payment was made for.
-      if (session.payment_status === 'paid' && session.metadata.profile) {
-        await unlockReport(session.metadata.profile, paymentIntent, session.metadata.locale).catch((e) => console.error('[webhook] failed to unlock report', e));
-      }
+    if (session.metadata?.kind === REPORT_KIND || session.metadata?.kind === PAIR_KIND) {
+      // Detailed or couple report: unlock what the payment was made for.
+      await fulfil(session).catch((e) => console.error('[webhook] failed to unlock report', e));
     } else if (session.metadata?.kind === 'tip') {
       // Tips unlock nothing; a confirmed one is counted here, once.
       if (session.payment_status === 'paid') await countEvent('tip_paid', session.metadata.locale);
@@ -57,10 +58,15 @@ export async function POST(req: Request) {
       // A delayed payment that has not arrived yet: wait for the async event.
     } else if (isUuid(userId)) {
       try {
-        await getSql()`
+        const granted = await getSql()`
           insert into entitlements (user_id, product_code, source, stripe_payment_intent_id)
           values (${userId}, ${productCode}, 'stripe', ${paymentIntent})
-          on conflict (user_id, product_code) do nothing`;
+          on conflict (user_id, product_code) do nothing returning user_id`;
+        if (granted.length > 0) {
+          const locale = sessionLocale(session);
+          await countEvent('premium_paid', locale);
+          await confirmByEmail(session, 'premium', getQuiz(locale).premiumProduct, `${appUrl()}${localePath(locale, '/')}`, false);
+        }
       } catch (error) {
         console.error('[webhook] failed to grant entitlement', error);
       }

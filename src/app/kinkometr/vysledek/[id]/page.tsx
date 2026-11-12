@@ -7,6 +7,10 @@ import Tip from '@/components/kink/Tip';
 import DeleteResult from '@/components/kink/DeleteResult';
 import Track from '@/components/Track';
 import ReportOffer from '@/components/kink/ReportOffer';
+import ShareCups from '@/components/kink/ShareCups';
+import EmailLinkForm from '@/components/EmailLinkForm';
+import { getExtra } from '@/lib/extra-content';
+import { encodeSharedCups } from '@/lib/share-cups';
 import { getReport } from '@/lib/report-content';
 import { reportPriceLabel } from '@/lib/stripe';
 import { fmt, localePath, plural } from '@/lib/i18n';
@@ -103,6 +107,7 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
   const podium = rec.top.slice(0, 3);
   const showSafety = [...rec.top, ...rec.explore].some((r) => r.cup.bdsm);
   const { single, lowDesire } = profile.context;
+  const x = getExtra(locale).ui;
 
   return (
     <KinkShell locale={locale} brand={t.brand} languageLabel={t.language}>
@@ -135,6 +140,7 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
             {topGroup && topGroup.avg >= 40 && <Emph template={t.groupLine} name="group" value={c.groups[topGroup.key].label} />}
             {unexploredCount > 0 && plural(locale, unexploredCount, c.plurals.unexplored)}
           </p>
+          {podium.length > 0 && <ShareCups path={href(`/kinkometr/sdilet?c=${encodeSharedCups(podium)}`)} t={x} />}
           {(full === 0 || lowDesire) && (
             <p className="glass rounded-xl p-3 text-xs text-muted-foreground">{lowDesire ? t.noteLowDesire : t.noteEmpty}</p>
           )}
@@ -310,6 +316,22 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
             </dl>
           </Section>
         )}
+
+        <section className="glass space-y-3 rounded-2xl p-4 print:hidden">
+          <h2 className="text-base font-semibold">{x.saveLinkTitle}</h2>
+          {profile.hasEmail ? (
+            <p className="text-xs text-muted-foreground">
+              {x.saveLinkStored}{' '}
+              <Link href={href('/obnova')} className="underline">{x.recoverLink}</Link>
+            </p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">{x.saveLinkLead}</p>
+              <EmailLinkForm locale={locale} resultId={profile.id} button={x.saveLinkButton} sentText={x.saveLinkSent} t={x} />
+              <p className="text-[11px] text-muted-foreground">{x.saveLinkConsent}</p>
+            </>
+          )}
+        </section>
 
         <Tip locale={locale} t={t} />
 

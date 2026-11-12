@@ -7,10 +7,11 @@ import Track from '@/components/Track';
 import ReportOffer from '@/components/kink/ReportOffer';
 import { fmt, localePath } from '@/lib/i18n';
 import { getContent } from '@/lib/kink-content';
-import { getKinkProfile, unlockReport } from '@/lib/kink-store';
+import { getKinkProfile } from '@/lib/kink-store';
+import { fulfilReturn } from '@/lib/purchase';
 import { getLocale } from '@/lib/locale';
 import { getReport } from '@/lib/report-content';
-import { REPORT_KIND, reportPriceLabel, stripe } from '@/lib/stripe';
+import { reportPriceLabel } from '@/lib/stripe';
 import { depthLevel, fillLevel, isUnexplored, rankedCups, stanceOf, type Cup, type CupResult, type Stance } from '@/lib/kink';
 
 export const dynamic = 'force-dynamic';
@@ -18,20 +19,6 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata(): Promise<Metadata> {
   const { ui } = getReport(await getLocale());
   return { title: ui.metaTitle, robots: { index: false, follow: false } };
-}
-
-// Confirms with Stripe that this Checkout session paid for this result.
-async function paidFor(sessionId: string, inviteToken: string): Promise<string | false> {
-  if (!stripe || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return false;
-  try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    const ok = session.payment_status === 'paid' && session.metadata?.kind === REPORT_KIND && session.metadata?.profile === inviteToken;
-    if (!ok) return false;
-    return typeof session.payment_intent === 'string' ? session.payment_intent : sessionId;
-  } catch (e) {
-    console.error('[report] could not verify payment', e);
-    return false;
-  }
 }
 
 type Ranked = { cup: Cup; result: CupResult };
@@ -82,9 +69,8 @@ export default async function KinkReportPage({
   let unlocked = profile.reportUnlocked;
   let justPaid = false;
   if (!unlocked && paid) {
-    const payment = await paidFor(paid, profile.inviteToken);
-    if (payment) {
-      await unlockReport(profile.inviteToken, payment, locale);
+    const bought = await fulfilReturn(paid);
+    if (bought?.kind === 'report' && bought.profile === profile.inviteToken) {
       unlocked = true;
       justPaid = true;
     }

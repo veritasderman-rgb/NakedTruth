@@ -1,14 +1,18 @@
-import { stripe, REPORT_KIND, reportPricing } from '@/lib/stripe';
+import { stripe, PAIR_KIND, REPORT_KIND, pairPricing, reportPricing } from '@/lib/stripe';
 import { DEFAULT_LOCALE, isLocale, localePath } from '@/lib/i18n';
-import { getKinkProfile } from '@/lib/kink-store';
+import { areConnected, getKinkProfile, getKinkProfileByInvite, isPairReportUnlocked } from '@/lib/kink-store';
 import { getReport } from '@/lib/report-content';
+import { getExtra } from '@/lib/extra-content';
+import { appUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
-// Stripe Checkout for the detailed report of one Kinkometr result. The result
-// is identified to Stripe by its shareable invite token, never by its private
-// id. On return the report page verifies the payment itself, so the unlock
-// does not depend on the webhook being configured.
+// Stripe Checkout for a paid report. Without `other` it is the detailed report
+// of one Kinkometr result; with `other` (the partner's invite token) it is the
+// couple report for the two connected results. Results are identified to
+// Stripe by their shareable invite tokens, never by a private id. On return
+// the report page verifies the payment itself, so the unlock does not depend
+// on the webhook being configured.
 export async function POST(req: Request) {
   if (!stripe) return Response.json({ error: 'stripe_not_configured' }, { status: 503 });
 
@@ -17,11 +21,17 @@ export async function POST(req: Request) {
   const profile = await getKinkProfile(body.id).catch(() => null);
   if (!profile) return Response.json({ error: 'not_found' }, { status: 404 });
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.get('host')}`;
-  const page = `${origin}${localePath(locale, `/kinkometr/rozbor/${profile.id}`)}`;
-  if (profile.reportUnlocked) return Response.json({ url: page });
+  const pair = typeof body.other === 'string';
+  const partner = pair ? await getKinkProfileByInvite(body.other).catch(() => null) : null;
+  if (pair && (!partner || !areConnected(profile, partner))) return Response.json({ error: 'not_found' }, { status: 404 });
 
-  const { currency, minor } = reportPricing(locale);
+  const path = partner ? `/kinkometr/parovy-rozbor/${profile.id}/${partner.inviteToken}` : `/kinkometr/rozbor/${profile.id}`;
+  const page = `${appUrl()}${localePath(locale, path)}`;
+  const unlocked = partner ? await isPairReportUnlocked(profile.inviteToken, partner.inviteToken) : profile.reportUnlocked;
+  if (unlocked) return Response.json({ url: page });
+
+  const { currency, minor } = partner ? pairPricing(locale) : reportPricing(locale);
+  const name = partner ? getExtra(locale).ui.pairProductName : getReport(locale).ui.productName;
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -31,15 +41,16 @@ export async function POST(req: Request) {
       // unlock without waiting for a webhook. Delayed methods (bank debits,
       // vouchers) would leave a paying customer behind the paywall.
       payment_method_types: ['card'],
-      line_items: [
-        {
-          quantity: 1,
-          price_data: { currency, unit_amount: minor, product_data: { name: getReport(locale).ui.productName } },
-        },
-      ],
+      line_items: [{ quantity: 1, price_data: { currency, unit_amount: minor, product_data: { name } } }],
       // The buy button is enabled only after the buyer ticks the consent to
       // immediate delivery; keep a record of it with the payment.
-      metadata: { kind: REPORT_KIND, profile: profile.inviteToken, locale, immediate_delivery_consent: 'yes' },
+      metadata: {
+        kind: partner ? PAIR_KIND : REPORT_KIND,
+        profile: profile.inviteToken,
+        ...(partner ? { partner: partner.inviteToken } : {}),
+        locale,
+        immediate_delivery_consent: 'yes',
+      },
       success_url: `${page}?paid={CHECKOUT_SESSION_ID}`,
       cancel_url: `${page}?cancelled=1`,
     });

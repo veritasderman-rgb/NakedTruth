@@ -21,4 +21,4 @@ export const OPERATOR = {
 export const OPERATOR_COMPLETE = !Object.values(OPERATOR).some((v) => v.includes('[DOPLNIT'));
 
 // Date the legal texts were last changed (shown on both pages).
-export const LEGAL_UPDATED = '2026-11-11';
+export const LEGAL_UPDATED = '2026-11-12';

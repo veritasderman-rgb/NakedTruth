@@ -404,3 +404,31 @@ create table if not exists stripe_events (
   id text primary key,
   received_at timestamptz not null default now()
 );
+
+-- ========= E-MAIL ACCESS RECOVERY =========
+-- Optional e-mail kept with a Kinkometr result: set when the owner asks to
+-- have the link e-mailed, or taken from the checkout when they buy a report.
+-- Deleted with the result.
+alter table kink_profiles add column if not exists email text;
+create index if not exists idx_kink_profiles_email on kink_profiles (email) where email is not null;
+
+-- At most a few e-mails per address and day. `key` is a SHA-256 of the
+-- address, so this table holds no e-mail addresses.
+create table if not exists mail_throttle (
+  key text not null,
+  day date not null default current_date,
+  count integer not null default 0,
+  primary key (key, day)
+);
+
+-- ========= COUPLE REPORT =========
+-- Paid joint plan for two connected Kinkometr results. Keyed by the two
+-- shareable invite tokens in ascending order; one payment unlocks it for both.
+create table if not exists kink_pair_reports (
+  a_invite uuid not null references kink_profiles (invite_token) on delete cascade,
+  b_invite uuid not null references kink_profiles (invite_token) on delete cascade,
+  unlocked_at timestamptz not null default now(),
+  payment text,
+  primary key (a_invite, b_invite),
+  check (a_invite < b_invite)
+);

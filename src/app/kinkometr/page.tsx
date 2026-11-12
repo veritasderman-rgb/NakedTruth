@@ -8,6 +8,9 @@ import { getKinkProfileByInvite } from '@/lib/kink-store';
 import { getLocale } from '@/lib/locale';
 import KinkTest, { type TestContent } from './KinkTest';
 import Track from '@/components/Track';
+import Link from 'next/link';
+import { getExtra } from '@/lib/extra-content';
+import { localePath } from '@/lib/i18n';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +43,7 @@ export default async function KinkometrPage({
   // Only what the test needs goes to the browser — no tips, no dating list.
   const test: TestContent = {
     ui: content.ui,
+    extra: (({ resumeTitle, resumeText, resumeContinue, resumeRestart }) => ({ resumeTitle, resumeText, resumeContinue, resumeRestart }))(getExtra(locale).ui),
     groups: content.groups,
     modes: content.modes,
     answers: content.answers,
@@ -62,6 +66,9 @@ export default async function KinkometrPage({
         inviteToken={inviteToken}
         isConfigured={isDbConfigured()}
       />
+      <p className="mt-6 text-center text-[11px] text-muted-foreground">
+        <Link href={localePath(locale, '/obnova')} className="underline">{getExtra(locale).ui.recoverTitle}</Link>
+      </p>
     </KinkShell>
   );
 }
