@@ -111,6 +111,14 @@ export const de: ExtraContent = {
     pairHiddenNote: 'Kelche, die einer von euch abgelehnt hat, sind nicht im Plan und werden nirgends angezeigt.',
 
     // ---- Landing pages (shared) ----
+    // ---- Free sample of the detailed report ----
+    sampleKicker: 'Kostenlose Vorschau',
+    sampleTitle: 'So sieht deine Auswertung aus',
+    sampleLead: 'Dein vollster Kelch ist komplett freigeschaltet. Die vollständige Auswertung behandelt jeden Kelch, der dich reizt, genauso ausführlich — insgesamt {n}.',
+    sampleLocked: 'Gesperrt',
+    sampleMore: 'Das wartet außerdem in der vollständigen Auswertung',
+    sampleLink: 'Kostenlose Vorschau ansehen',
+
     landingFaqTitle: 'Häufige Fragen',
     landingMeasures: 'Was der Test misst',
     landingOther: 'Weitere Tests',

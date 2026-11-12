@@ -111,6 +111,14 @@ export const en: ExtraContent = {
     pairHiddenNote: "Cups that either of you turned down aren't in the plan and won't be shown anywhere.",
 
     // ---- Landing pages (shared) ----
+    // ---- Free sample of the detailed report ----
+    sampleKicker: 'Free sample',
+    sampleTitle: 'This is what your report looks like',
+    sampleLead: 'Your fullest cup is unlocked in full. The complete report covers every cup that appeals to you in the same detail — {n} in total.',
+    sampleLocked: 'Locked',
+    sampleMore: 'Also waiting in the full report',
+    sampleLink: 'See a free sample',
+
     landingFaqTitle: 'Frequently asked questions',
     landingMeasures: 'What the test measures',
     landingOther: 'More tests',

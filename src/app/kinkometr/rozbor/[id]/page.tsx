@@ -11,6 +11,7 @@ import { getKinkProfile } from '@/lib/kink-store';
 import { fulfilReturn } from '@/lib/purchase';
 import { getLocale } from '@/lib/locale';
 import { getReport } from '@/lib/report-content';
+import { getExtra } from '@/lib/extra-content';
 import { reportPriceLabel } from '@/lib/stripe';
 import { depthLevel, fillLevel, isUnexplored, rankedCups, stanceOf, type Cup, type CupResult, type Stance } from '@/lib/kink';
 
@@ -48,6 +49,7 @@ export default async function KinkReportPage({
   const c = getContent(locale);
   const r = getReport(locale);
   const t = r.ui;
+  const x = getExtra(locale).ui;
   const href = (path: string) => localePath(locale, path);
   const profile = await getKinkProfile(id).catch(() => null);
 
@@ -78,27 +80,6 @@ export default async function KinkReportPage({
 
   const resultPath = href(`/kinkometr/vysledek/${profile.id}`);
 
-  if (!unlocked) {
-    return (
-      <KinkShell locale={locale} brand={c.ui.brand} languageLabel={c.ui.language}>
-        <div className="space-y-6">
-          <ReportOffer
-            id={profile.id}
-            locale={locale}
-            price={reportPriceLabel(locale)}
-            unlocked={false}
-            reportPath={href(`/kinkometr/rozbor/${profile.id}`)}
-            notice={paid ? t.notVerified : cancelled ? t.cancelled : null}
-            t={t}
-          />
-          <Link href={resultPath} className="block text-center text-xs text-muted-foreground underline">
-            {t.backToResult}
-          </Link>
-        </div>
-      </KinkShell>
-    );
-  }
-
   const ranked = rankedCups(profile.cups);
   const by = (s: Stance) => ranked.filter((x) => stanceOf(x.result) === s);
   const [yes, maybe, no] = [by('yes'), by('maybe'), by('no')];
@@ -114,6 +95,99 @@ export default async function KinkReportPage({
   const avgDepth = depths.length > 0 ? Math.round(depths.reduce((a, b) => a + b, 0) / depths.length) : null;
 
   const names = (list: Ranked[]) => (list.length > 0 ? list.map((x) => c.cups[x.cup.key].label).join(' · ') : t.mapEmpty);
+
+  // One cup in full: how to bring it up, what to try, and an evening.
+  const CupCard = ({ cup, result }: Ranked) => {
+    const text = c.cups[cup.key];
+    const blocks: { label: string; items: string[] }[] = [
+      { label: t.talkLabel, items: [r.cups[cup.key].talk] },
+      { label: c.ui.activities, items: text.tips.activities },
+      { label: c.ui.positions, items: text.tips.positions },
+      { label: c.ui.places, items: text.tips.places },
+      { label: c.ui.goFurther, items: text.tips.deeper ? [text.tips.deeper] : [] },
+      { label: t.eveningLabel, items: [r.cups[cup.key].evening] },
+    ];
+    return (
+      <div className="glass break-inside-avoid space-y-4 rounded-xl p-4" style={{ borderColor: `${cup.color}66` }}>
+        <div className="flex items-center gap-3">
+          <CupGlass id={`r-${cup.key}`} fill={result.fill} color={cup.color} unexplored={isUnexplored(result)} size={44} />
+          <div>
+            <p className="text-base font-semibold" style={{ color: cup.color }}>{text.label}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {result.fill} % · {c.fill[fillLevel(result)]} · {text.desc}
+            </p>
+          </div>
+        </div>
+        {isUnexplored(result) && <p className="text-sm">{text.tips.firstStep}</p>}
+        {blocks.filter((b) => b.items.length > 0).map((b) => (
+          <div key={b.label}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{b.label}</p>
+            <ul className="mt-1.5 space-y-1.5 text-sm">
+              {b.items.map((item) => (
+                <li key={item} className="flex gap-2">
+                  <span aria-hidden className="text-muted-foreground">·</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  if (!unlocked) {
+    // Free sample: the fullest cup in full. Everything else is shown by name
+    // only — the paid text is never sent to the browser.
+    const [sample, ...locked] = open;
+    const offer = (
+      <ReportOffer
+        id={profile.id}
+        locale={locale}
+        price={reportPriceLabel(locale)}
+        unlocked={false}
+        reportPath={href(`/kinkometr/rozbor/${profile.id}`)}
+        notice={paid ? t.notVerified : cancelled ? t.cancelled : null}
+        t={t}
+      />
+    );
+    return (
+      <KinkShell locale={locale} brand={c.ui.brand} languageLabel={c.ui.language}>
+        <Track name="report_sample_view" />
+        <div className="space-y-6">
+          {sample && (
+            <>
+              <header className="space-y-2">
+                <span className="brand-pill">{x.sampleKicker}</span>
+                <h1 className="text-gradient text-balance text-3xl font-bold tracking-tight">{x.sampleTitle}</h1>
+                <p className="text-sm text-muted-foreground">{fmt(x.sampleLead, { n: open.length })}</p>
+              </header>
+              <CupCard {...sample} />
+              <section className="space-y-2" data-testid="locked">
+                <h2 className="text-sm font-semibold">{x.sampleMore}</h2>
+                <ul className="space-y-2">
+                  {[...locked.map((l) => ({ key: l.cup.key as string, label: c.cups[l.cup.key].label, color: l.cup.color })), { key: 'map', label: t.mapTitle, color: '#94a3b8' }, { key: 'plan', label: t.planTitle, color: '#94a3b8' }].map((row) => (
+                    <li key={row.key} className="glass flex items-center justify-between gap-3 rounded-xl p-3" style={{ borderColor: `${row.color}44` }}>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold" style={{ color: row.color }}>{row.label}</span>
+                        <span aria-hidden className="mt-1.5 block h-2 w-40 max-w-full rounded-full bg-white/10 blur-[2px]" />
+                        <span aria-hidden className="mt-1 block h-2 w-28 max-w-full rounded-full bg-white/10 blur-[2px]" />
+                      </span>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">🔒 {x.sampleLocked}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </>
+          )}
+          {offer}
+          <Link href={resultPath} className="block text-center text-xs text-muted-foreground underline">
+            {t.backToResult}
+          </Link>
+        </div>
+      </KinkShell>
+    );
+  }
 
   return (
     <KinkShell locale={locale} brand={c.ui.brand} languageLabel={c.ui.language}>
@@ -185,44 +259,9 @@ export default async function KinkReportPage({
               <h2 className="text-lg font-semibold tracking-tight">{t.cupsTitle}</h2>
               <p className="text-xs text-muted-foreground">{t.cupsLead}</p>
             </div>
-            {open.map(({ cup, result }) => {
-              const text = c.cups[cup.key];
-              const blocks: { label: string; items: string[] }[] = [
-                { label: t.talkLabel, items: [r.cups[cup.key].talk] },
-                { label: c.ui.activities, items: text.tips.activities },
-                { label: c.ui.positions, items: text.tips.positions },
-                { label: c.ui.places, items: text.tips.places },
-                { label: c.ui.goFurther, items: text.tips.deeper ? [text.tips.deeper] : [] },
-                { label: t.eveningLabel, items: [r.cups[cup.key].evening] },
-              ];
-              return (
-                <div key={cup.key} className="glass break-inside-avoid space-y-4 rounded-xl p-4" style={{ borderColor: `${cup.color}66` }}>
-                  <div className="flex items-center gap-3">
-                    <CupGlass id={`r-${cup.key}`} fill={result.fill} color={cup.color} unexplored={isUnexplored(result)} size={44} />
-                    <div>
-                      <p className="text-base font-semibold" style={{ color: cup.color }}>{text.label}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {result.fill} % · {c.fill[fillLevel(result)]} · {text.desc}
-                      </p>
-                    </div>
-                  </div>
-                  {isUnexplored(result) && <p className="text-sm">{text.tips.firstStep}</p>}
-                  {blocks.filter((b) => b.items.length > 0).map((b) => (
-                    <div key={b.label}>
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{b.label}</p>
-                      <ul className="mt-1.5 space-y-1.5 text-sm">
-                        {b.items.map((item) => (
-                          <li key={item} className="flex gap-2">
-                            <span aria-hidden className="text-muted-foreground">·</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
+            {open.map((item) => (
+              <CupCard key={item.cup.key} {...item} />
+            ))}
             <p className="text-[11px] leading-relaxed text-muted-foreground">{c.placesNote}</p>
           </section>
         )}

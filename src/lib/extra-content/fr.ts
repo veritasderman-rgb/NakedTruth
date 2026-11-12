@@ -111,6 +111,14 @@ export const fr: ExtraContent = {
     pairHiddenNote: "Les coupes que l'un de vous a refusées ne figurent pas dans le plan et ne s'affichent nulle part.",
 
     // ---- Landing pages (shared) ----
+    // ---- Free sample of the detailed report ----
+    sampleKicker: 'Aperçu gratuit',
+    sampleTitle: 'Voici à quoi ressemble ton rapport',
+    sampleLead: 'Ta coupe la plus remplie est entièrement débloquée. Le rapport complet détaille de la même façon chaque coupe qui t’attire — {n} au total.',
+    sampleLocked: 'Verrouillé',
+    sampleMore: 'Ce qui t’attend encore dans le rapport complet',
+    sampleLink: 'Voir un aperçu gratuit',
+
     landingFaqTitle: "Questions fréquentes",
     landingMeasures: "Ce que mesure le test",
     landingOther: "Autres tests",

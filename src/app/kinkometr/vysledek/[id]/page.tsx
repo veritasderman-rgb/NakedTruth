@@ -202,6 +202,7 @@ export default async function KinkResultPage({ params }: { params: Promise<{ id:
           price={reportPriceLabel(locale)}
           unlocked={profile.reportUnlocked}
           reportPath={href(`/kinkometr/rozbor/${profile.id}`)}
+          sampleLabel={x.sampleLink}
           t={getReport(locale).ui}
         />
 

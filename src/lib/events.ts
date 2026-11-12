@@ -18,6 +18,7 @@ export const EVENTS = [
   'report_buy_click',
   'report_paid',
   'report_view',
+  'report_sample_view',
   'tip_click',
   'tip_paid',
   'quiz_start',
