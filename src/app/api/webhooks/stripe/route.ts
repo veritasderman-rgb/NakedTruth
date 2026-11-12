@@ -40,6 +40,11 @@ export async function POST(req: Request) {
     return Response.json({ error: 'storage_failed' }, { status: 500 });
   }
 
+  // False when something the event calls for is still owed (an unlock that
+  // threw, a confirmation e-mail that did not go out): Stripe is then asked
+  // to deliver the event again.
+  let done = true;
+
   // async_payment_succeeded covers delayed payment methods, where the session
   // completes unpaid and the money arrives later.
   if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
@@ -50,7 +55,13 @@ export async function POST(req: Request) {
 
     if (session.metadata?.kind === REPORT_KIND || session.metadata?.kind === PAIR_KIND) {
       // Detailed or couple report: unlock what the payment was made for.
-      await fulfil(session).catch((e) => console.error('[webhook] failed to unlock report', e));
+      try {
+        const result = await fulfil(session);
+        if (result && !result.confirmed) done = false;
+      } catch (e) {
+        console.error('[webhook] failed to unlock report', e);
+        done = false;
+      }
     } else if (session.metadata?.kind === 'tip') {
       // Tips unlock nothing; a confirmed one is counted here, once.
       if (session.payment_status === 'paid') await countEvent('tip_paid', session.metadata.locale);
@@ -62,17 +73,23 @@ export async function POST(req: Request) {
           insert into entitlements (user_id, product_code, source, stripe_payment_intent_id)
           values (${userId}, ${productCode}, 'stripe', ${paymentIntent})
           on conflict (user_id, product_code) do nothing returning user_id`;
-        if (granted.length > 0) {
-          const locale = sessionLocale(session);
-          await countEvent('premium_paid', locale);
-          await confirmByEmail(session, 'premium', getQuiz(locale).premiumProduct, `${appUrl()}${localePath(locale, '/')}`, false);
-        }
+        const locale = sessionLocale(session);
+        if (granted.length > 0) await countEvent('premium_paid', locale);
+        if (!(await confirmByEmail(session, 'premium', getQuiz(locale).premiumProduct, `${appUrl()}${localePath(locale, '/')}`, false))) done = false;
       } catch (error) {
         console.error('[webhook] failed to grant entitlement', error);
+        done = false;
       }
     } else {
       console.warn('[webhook] checkout.session.completed without a valid user_id in metadata');
     }
+  }
+
+  if (!done) {
+    // Forget the event so the retry is handled, and answer with an error so
+    // Stripe retries. Every step above is idempotent.
+    await getSql()`delete from stripe_events where id = ${event.id}`.catch((e) => console.error('[webhook] could not release event', e));
+    return Response.json({ error: 'incomplete' }, { status: 500 });
   }
 
   return Response.json({ received: true });

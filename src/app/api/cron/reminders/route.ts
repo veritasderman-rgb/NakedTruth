@@ -68,6 +68,7 @@ export async function GET(req: Request) {
         and not exists (select 1 from couples c where c.created_by_user_id = u.id)
         and not exists (select 1 from entitlements e where e.user_id = u.id)`;
     await sql`delete from mail_throttle where day < current_date - 7`;
+    await sql`delete from purchase_confirmations where claimed_at < now() - interval '90 days'`;
     await sql`delete from stripe_events where received_at < now() - interval '90 days'`;
     purged = profiles.length + sessions.length;
   } catch (error) {
