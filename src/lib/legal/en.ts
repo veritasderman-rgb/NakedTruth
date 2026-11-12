@@ -106,7 +106,7 @@ export const en: LegalContent = {
           'Blind couples quiz: both partners’ answers, the quiz settings and the language. If you enter an email address (yours or your partner’s), we store it so that we can send the invitation, a reminder and a notification of the results. Without an email address, the quiz is anonymous.',
           'Payments: these are made through Stripe. We receive only confirmation that the payment went through, and its identifier. We do not see your card number.',
           'Traffic measurement: we count only aggregate numbers of events per day (for example, how many people completed a test). We use no cookies for this, store no IP address or device identifier, and do not track individual visitors.',
-          'Cookies: we use a single, strictly necessary cookie to remember your chosen language. We do not use advertising or analytics cookies.',
+          'Cookies: we use a strictly necessary cookie to remember your chosen language. If you open a link with a VIP code, a second cookie holding that code is stored for 30 days so that paid content can be unlocked without payment. We do not use advertising or analytics cookies.',
         ],
       },
       {

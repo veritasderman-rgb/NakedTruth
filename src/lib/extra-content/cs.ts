@@ -141,6 +141,25 @@ const ui = {
   sampleMore: 'V plném rozboru tě čeká ještě',
   sampleLink: 'Podívat se na ukázku zdarma',
 
+  // ---- VIP codes ----
+
+  vipHave: 'Mám VIP kód',
+
+  vipPlaceholder: 'VIP kód',
+
+  vipApply: 'Odemknout kódem',
+
+  vipInvalid: 'Kód neplatí, vypršel nebo je vyčerpaný.',
+
+  vipActiveTitle: 'VIP přístup je aktivní',
+
+  vipActiveLead: 'Kód {code} je uložený v tomto prohlížeči na 30 dní. Podrobný rozbor, párový rozbor i prémiové balíčky kvízu jím odemkneš bez placení — u každé nabídky stačí kliknout na „Odemknout kódem“.',
+
+  vipInvalidTitle: 'Tento VIP kód neplatí',
+
+  vipInvalidLead: 'Kód vypršel, je vyčerpaný, nebo je v odkazu překlep. Ozvi se tomu, kdo ti ho poslal.',
+
+
   landingFaqTitle: 'Časté otázky',
   landingMeasures: 'Co test měří',
   landingOther: 'Další testy',

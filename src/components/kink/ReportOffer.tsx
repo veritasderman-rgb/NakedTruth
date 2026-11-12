@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { fmt, localePath, type Locale } from '@/lib/i18n';
 import { track } from '@/lib/track';
+import { useRouter } from 'next/navigation';
+import { redeemVip } from '@/app/actions/vip';
 
 // Teaser + buy button for the paid detailed report. When the report is already
 // unlocked it turns into a plain link to it.
@@ -16,6 +18,7 @@ export default function ReportOffer({
   notice,
   other,
   sampleLabel,
+  vip,
   t,
 }: {
   // The viewer's private result id.
@@ -29,12 +32,35 @@ export default function ReportOffer({
   other?: string;
   // Label of a link to the free sample (shown on the result page).
   sampleLabel?: string;
+  // VIP wording, and the code remembered in this browser (if any).
+  vip: { have: string; placeholder: string; apply: string; invalid: string; code: string | null };
   t: Record<string, string>;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Required by law: explicit consent to immediate delivery of digital content.
   const [waiver, setWaiver] = useState(false);
+  const router = useRouter();
+  const [vipOpen, setVipOpen] = useState(!!vip.code);
+  const [vipCode, setVipCode] = useState(vip.code ?? '');
+
+  // A VIP code unlocks without payment; the page then shows the content.
+  const redeem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      if ((await redeemVip(vipCode, id, other)) === 'ok') {
+        if (window.location.pathname === reportPath) router.refresh();
+        else router.push(reportPath);
+        return;
+      }
+      setError(vip.invalid);
+    } catch {
+      setError(vip.invalid);
+    }
+    setBusy(false);
+  };
 
   const buy = async () => {
     track(other ? 'pair_buy_click' : 'report_buy_click');
@@ -96,6 +122,26 @@ export default function ReportOffer({
             <Link href={reportPath} className="block rounded-xl border border-white/15 px-6 py-3 text-center text-sm font-medium hover:bg-white/5">
               {sampleLabel}
             </Link>
+          )}
+          {vipOpen ? (
+            <form onSubmit={redeem} className="flex gap-2" data-testid="vip">
+              <input
+                value={vipCode}
+                onChange={(e) => setVipCode(e.target.value)}
+                placeholder={vip.placeholder}
+                aria-label={vip.placeholder}
+                autoCapitalize="characters"
+                spellCheck={false}
+                className="min-w-0 flex-1 rounded-md border border-white/15 bg-transparent px-3 py-2.5 text-sm uppercase outline-none focus:border-primary"
+              />
+              <button type="submit" disabled={busy || vipCode.trim() === ''} className="shrink-0 rounded-md border border-primary px-4 py-2.5 text-sm font-medium text-primary disabled:opacity-60">
+                {vip.apply}
+              </button>
+            </form>
+          ) : (
+            <button type="button" onClick={() => setVipOpen(true)} className="block w-full text-center text-[11px] text-muted-foreground underline">
+              {vip.have}
+            </button>
           )}
         </>
       )}

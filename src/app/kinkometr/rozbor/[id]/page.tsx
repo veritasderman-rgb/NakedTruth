@@ -5,6 +5,7 @@ import CupGlass from '@/components/kink/CupGlass';
 import PrintButton from '@/components/kink/PrintButton';
 import Track from '@/components/Track';
 import ReportOffer from '@/components/kink/ReportOffer';
+import { vipProps } from '@/lib/vip-texts';
 import { fmt, localePath } from '@/lib/i18n';
 import { getContent } from '@/lib/kink-content';
 import { getKinkProfile } from '@/lib/kink-store';
@@ -148,6 +149,7 @@ export default async function KinkReportPage({
         unlocked={false}
         reportPath={href(`/kinkometr/rozbor/${profile.id}`)}
         notice={paid ? t.notVerified : cancelled ? t.cancelled : null}
+        vip={await vipProps(x)}
         t={t}
       />
     );

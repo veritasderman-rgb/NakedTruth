@@ -119,6 +119,25 @@ export const es: ExtraContent = {
     sampleMore: 'Lo que te espera además en el informe completo',
     sampleLink: 'Ver una muestra gratis',
 
+    // ---- VIP codes ----
+
+    vipHave: 'Tengo un código VIP',
+
+    vipPlaceholder: 'Código VIP',
+
+    vipApply: 'Desbloquear con código',
+
+    vipInvalid: 'El código no es válido, ha caducado o está agotado.',
+
+    vipActiveTitle: 'El acceso VIP está activo',
+
+    vipActiveLead: 'El código {code} queda guardado en este navegador durante 30 días. Con él desbloqueas sin pagar el informe detallado, el análisis de pareja y los packs premium del quiz: solo tienes que pulsar «Desbloquear con código» en cada oferta.',
+
+    vipInvalidTitle: 'Este código VIP no es válido',
+
+    vipInvalidLead: 'El código ha caducado, está agotado o hay un error en el enlace. Escribe a quien te lo envió.',
+
+
     landingFaqTitle: 'Preguntas frecuentes',
     landingMeasures: 'Qué mide el test',
     landingOther: 'Más tests',

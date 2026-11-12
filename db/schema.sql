@@ -445,3 +445,15 @@ create table if not exists purchase_confirmations (
   claimed_at timestamptz not null default now(),
   sent_at timestamptz
 );
+
+-- ========= VIP CODES =========
+-- Codes the owner hands out (testers, reviewers) that unlock paid content
+-- without payment. Each unlock uses the code once; max_uses null = unlimited.
+create table if not exists vip_codes (
+  code text primary key,
+  note text,
+  max_uses integer,
+  uses integer not null default 0,
+  expires_at timestamptz,
+  created_at timestamptz not null default now()
+);

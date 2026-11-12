@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSql } from '@/lib/db';
 import { EVENTS } from '@/lib/events';
+import VipCodes from './VipCodes';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Stats | NakedTruth', robots: { index: false, follow: false } };
@@ -41,6 +42,8 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
         <h1 className="text-2xl font-bold">Stats — last {days} days</h1>
         <p className="text-xs text-muted-foreground">Anonymous daily counters. Page views include reloads and some bots; actions do not. report_paid counts each unlocked report once; pair_paid likewise; tip_paid and premium_paid need the Stripe webhook and stay at zero without it.</p>
       </header>
+
+      <VipCodes statsKey={secret} />
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Kinkometr funnel</h2>

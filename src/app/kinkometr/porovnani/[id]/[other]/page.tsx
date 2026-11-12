@@ -8,6 +8,7 @@ import { fmt, localePath, plural } from '@/lib/i18n';
 import { getContent } from '@/lib/kink-content';
 import { areConnected, getKinkProfile, getKinkProfileByInvite, isPairReportUnlocked } from '@/lib/kink-store';
 import ReportOffer from '@/components/kink/ReportOffer';
+import { vipProps } from '@/lib/vip-texts';
 import { getExtra } from '@/lib/extra-content';
 import { getReport } from '@/lib/report-content';
 import { pairOfferTexts } from '@/lib/pair-texts';
@@ -199,6 +200,7 @@ export default async function KinkComparePage({ params }: { params: Promise<{ id
             price={pairPriceLabel(locale)}
             unlocked={pairUnlocked}
             reportPath={href(`/kinkometr/parovy-rozbor/${mine.id}/${theirs.inviteToken}`)}
+            vip={await vipProps(getExtra(locale).ui)}
             t={pairOfferTexts(getReport(locale).ui, getExtra(locale).ui)}
           />
         )}

@@ -119,6 +119,25 @@ export const fr: ExtraContent = {
     sampleMore: 'Ce qui t’attend encore dans le rapport complet',
     sampleLink: 'Voir un aperçu gratuit',
 
+    // ---- VIP codes ----
+
+    vipHave: 'J’ai un code VIP',
+
+    vipPlaceholder: 'Code VIP',
+
+    vipApply: 'Débloquer avec le code',
+
+    vipInvalid: 'Ce code est invalide, expiré ou épuisé.',
+
+    vipActiveTitle: 'L’accès VIP est actif',
+
+    vipActiveLead: 'Le code {code} est enregistré dans ce navigateur pendant 30 jours. Il débloque sans paiement le rapport détaillé, le rapport de couple et les packs premium du quiz — il suffit de cliquer sur « Débloquer avec le code » à chaque offre.',
+
+    vipInvalidTitle: 'Ce code VIP n’est pas valide',
+
+    vipInvalidLead: 'Le code a expiré, est épuisé, ou le lien contient une faute de frappe. Contacte la personne qui te l’a envoyé.',
+
+
     landingFaqTitle: "Questions fréquentes",
     landingMeasures: "Ce que mesure le test",
     landingOther: "Autres tests",

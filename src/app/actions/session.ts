@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { isLocale, localePath, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 import { getLocale } from '@/lib/locale';
+import { consumeVip, rememberedVip } from '@/lib/vip';
+import { countEvent } from '@/lib/events';
 
 type Sql = ReturnType<typeof getSql>;
 
@@ -73,7 +75,14 @@ export async function startSession(
   // creating a couple/session so a non-paying attempt leaves no junk; the UI gets
   // a paywall signal instead of an error (create_pack_session also enforces this).
   if (pack && !(await userHasPremium(sql, userId))) {
-    return { paywall: true, userId };
+    // A VIP code remembered in this browser stands in for the payment.
+    const vip = await rememberedVip();
+    if (!vip || !(await consumeVip(vip))) return { paywall: true, userId };
+    await sql`
+      insert into entitlements (user_id, product_code, source)
+      values (${userId}, 'premium', ${`vip:${vip}`})
+      on conflict (user_id, product_code) do nothing`;
+    await countEvent('vip_unlock', await getLocale());
   }
 
   // 2. Reuse the user's latest couple, otherwise create a standalone one.
